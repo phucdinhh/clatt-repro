@@ -1,52 +1,77 @@
 # clatt-repro
 
 Reproduction of the CLATT paper (short-term stock correlation forecasting with CNN-BiLSTM + attention) in PyTorch.
-Source documents are in `docs/`: the experiment plan (PDF, sections 3 and 4.1-4.4) and the paper (PDF).
-Current state: data, models and baselines exist. **Nothing is trained yet** — do not run training unless asked.
+Source documents are in `docs/`: the experiment plan (PDF, sections 3, 4.1-4.4, 5, 6) and the paper (PDF).
+Current state: stage 3 (training loop, metrics, CLI, aggregation) is written and a smoke run exists in `results/runs/smoke/`.
+**Do not run `--final` (test split) and do not tune anything based on smoke results** unless asked.
 
 ## Code map
 
 | File | Contents |
 |---|---|
-| `src/data.py` | Constants (CODES, GROUPS, START, END, RESULTS, PROCESSED), `load_raw`, `traded` |
-| `src/features.py` | Log-returns, stock pairing, rho label = rolling Pearson (k=20), `rho_stats` |
-| `src/dataset.py` | T=68, FEATURES=[rho, r_A, r_B], sliding windows, purged train/val/test split (7/1/2), MinMax fit on train only. `python -m src.dataset` writes the stage-1 tables and figures |
-| `src/models/__init__.py` | `TABLE1` ([PAPER] hyperparameters), `MODELS`, `build(name, n_features=3, T=68)`, `n_params` |
-| `src/models/cnn.py` | `CNN`: Conv1D -> ReLU -> Dropout -> Flatten -> Dense(hidden, ReLU) -> Dense(1) |
-| `src/models/recurrent.py` | `Attention` (Eq. 8-9) and `ConvRNN`, used for LSTM, CNN-LSTM, CNN-BiLSTM and CLATT |
+| `src/data.py` | Constants (ROOT, CODES, GROUPS, START, END, RESULTS, PROCESSED), `load_raw`, `traded` |
+| `src/features.py` | Log-returns, stock pairing (`pairs()`), rho label = rolling Pearson (k=20), `rho_stats` |
+| `src/dataset.py` | T=68, FEATURES=[rho, r_A, r_B], sliding windows, purged train/val/test split (7/1/2), MinMax fit on train only. `make_dataset` also returns `y_raw` and `rho_prev` (original scale). `get_pair_data(pair)` rebuilds a pair from raw CSVs. `python -m src.dataset` writes the stage-1 tables and figures |
+| `src/models/__init__.py` | Loads `TABLE1` from `configs/models/*.yaml`; `MODELS`, `build(name, n_features, T, **hp)`, `n_params` |
+| `src/models/cnn.py`, `recurrent.py` | `CNN`; `Attention` (Eq. 8-9) and `ConvRNN` (LSTM, CNN-LSTM, CNN-BiLSTM, CLATT) |
 | `src/models/__main__.py` | `python -m src.models` writes `results/tables/model_params.csv` |
 | `src/baselines.py` | Persistence, MovingAverage (MA5), AR1, RidgeWindow; `BASELINES` dict |
-| `src/train.py` | Only `set_seed` so far (training loop not written) |
-| `src/evaluate.py`, `plots.py`, `stats.py`, `tune.py` | Empty files, not started |
-| `tests/test_pipeline.py`, `tests/test_models.py` | Data tests; model tests (plan 4.4) and baseline sanity check |
-| `configs/`, `scripts/` | `base.yaml`, `experiments/`, `models/`; `download_baostock.py`, `run_all.sh` |
+| `src/metrics.py` | mse, rmse, mae, r2, mape, mape_excl, smape, n_near_zero, skill, r2_delta, dir_acc, `compute_all`. All take original-scale `y_true, y_pred, rho_prev` |
+| `src/train.py` | `set_seed`, `load_config`, `fit` (Adam, clip, early stopping), `train_one` (saves everything under `results/runs/<exp>/<model>/<pair>/seed<k>/`) |
+| `src/run.py` | CLI: `--exp --models --pairs/--group --seeds --config-override --final --force`; logs to `results/logs/<exp>.log` |
+| `src/aggregate.py` | `python -m src.aggregate <exp>` writes `results/tables/<exp>_metrics_long.csv` and `<exp>_summary.csv` |
+| `src/plots.py` | `python -m src.plots <exp>` writes `results/figures/<exp>_loss_curves.png` |
+| `src/evaluate.py`, `stats.py`, `tune.py` | Empty files, not started |
+| `tests/` | `test_pipeline.py` (data), `test_models.py` (plan 4.4 + baselines), `test_metrics.py` (metrics vs sklearn, hand examples, `--final` guard, `lr=1e-3` override parsing, exact Persistence predictions and skip/config-diff checks via `train_one` into `tmp_path`) |
+| `configs/` | `base.yaml` (T, k, lr, clip_norm, patience, num_threads), `models/<model>.yaml` (hidden, filters, dropout, batch_size, max_epochs), `experiments/` |
 
 ## Commands
 
-- Tests: `python -m pytest -q` (about 84 s, 25 tests; the fixture needs the real data in `data/`)
-- Parameter table: `python -m src.models`
-- Data pipeline: `python -m src.dataset`
+- Tests: `python -m pytest -q` (about 85 s, 33 tests; fixtures need the real data in `data/`)
+- Smoke run: `python -m src.run --exp smoke --models CLATT CNN-BiLSTM Persistence --pairs 300015_300274 --seeds 0`
+- Aggregate and plot: `python -m src.aggregate smoke`, `python -m src.plots smoke`
+- Parameter table: `python -m src.models`; data pipeline: `python -m src.dataset`
 
 ## Conventions and decisions
 
-- Model input `X` has shape `(B, T, F)` with rho in column 0. Label `y` is the scaled rho at day `t+1`. Models take `(B, T, F)` and transpose for Conv1d themselves.
-- `hidden` in `TABLE1` means **units per direction** for BiLSTM. This is an interpretation, not confirmed by the paper (must be labelled `[INFERENCE]`).
-- Conv1D: kernel=3, padding="same" (group's own choice). LSTM has 2 layers. Models without attention use the last state of the top layer (both directions for BiLSTM). CLATT uses the full sequence plus attention.
+- Model input `X` is `(B, T, F)` with rho in column 0. Label `y` is the scaled rho at `t+1`. `rho_prev` = rho(t), original scale.
+- Predictions are scaled back with `y_pred * span + lo`, using the scaler's rho column. Metrics always use the original scale.
+- Persistence bypasses that round trip: `train_one` sets `y_pred = rho_prev` exactly. Through float32 `X` it would differ by ~1e-8 and make `dir_acc` noise. So Persistence has `skill = 0`, `dir_acc = 0` (a zero predicted change never matches a sign) and a slightly negative `r2_delta` (mean Δρ on val is not 0).
+- `hidden` means **units per direction** for BiLSTM. This is an interpretation, not stated by the paper (`[INFERENCE]`).
+- Conv1D: kernel=3, padding="same" (group's own choice). LSTM has 2 layers. Without attention, models use the last state of the top layer (both directions for BiLSTM). CLATT uses the full sequence plus attention.
 - "CLATT- (rho only)" is CLATT with `n_features=1`.
-- Every baseline is an affine function of rho, so it inverse-transforms the same way as the deep models' output. Ridge picks alpha on val (`logspace(-3, 3, 13)`) and is fit on train only.
-- The `source` column in `model_params.csv` must say which group each setting belongs to: `[PAPER]`, `[INFERENCE]` or `nhóm tự chọn` (the group's own choice). Never tag something `[PAPER]` if the paper does not state it clearly.
-- `set_seed` turns on `use_deterministic_algorithms(True)`; on GPU this needs `CUBLAS_WORKSPACE_CONFIG=:4096:8`.
+- Training: Adam lr 1e-3, MSE on scaled y, clip_grad_norm 1.0, early stopping patience 10 on scaled val MSE, best weights restored. `batch_size` and `max_epochs` come from `configs/models/<name>.yaml`.
+- A run is complete only when `metrics.json` exists (it is written last). An existing run is skipped only if its saved `config.yaml` (minus `split_label_dates`) equals the new run config; any difference (e.g. `split_eval` from `--final`, an override) raises `ValueError` naming the keys. Use a new `--exp` or `--force`.
+- `--config-override key=value` values are parsed as YAML; a string for a float key (`lr=1e-3`, which PyYAML reads as text) is cast to `float`. Unknown keys raise `KeyError`.
+- `split_eval` may include `"test"` only with `--final`; otherwise `train_one` raises `ValueError`.
+- `source` column in `model_params.csv` and config comments: `[PAPER]`, `[INFERENCE]` or `nhóm tự chọn` (the group's own choice). Never tag something `[PAPER]` if the paper does not state it clearly.
+- `set_seed` sets random, numpy, torch, `CUBLAS_WORKSPACE_CONFIG` and `use_deterministic_algorithms(True)`. `torch.set_num_threads` comes from `cfg["num_threads"]`.
 - Intentional shortcuts get a short comment: `shortcut: <the limit>, <when to upgrade>`.
+
+## Smoke results (exp `smoke`, pair 300015_300274, seed 0, val only; for information, not for tuning)
+
+| Model | MSE | MAE | R² | r2_delta | skill | dir_acc | best epoch |
+|---|---|---|---|---|---|---|---|
+| Persistence | 0.0074 | 0.0515 | 0.795 | -0.006 | 0 | 0 | - |
+| CLATT | 0.0085 | 0.0654 | 0.765 | -0.154 | -0.147 | 0.571 | 15 / 25 |
+| CNN-BiLSTM | 0.0088 | 0.0682 | 0.756 | -0.200 | -0.192 | 0.561 | 26 / 36 |
+
+Loss curves converge normally. `--force` reruns give byte-identical `metrics.json` and `preds_val.csv` (apart from timings).
+
+## Measured timing (M-series, 8 cores, 4 threads, one pair, ~685 train samples)
+
+Seconds per epoch: CNN 0.13, LSTM 0.23, CNN-LSTM 0.94, CNN-BiLSTM 2.7, CLATT 2.8 (one CLATT run 70-155 s).
+Revised plan section 11 estimate (sequential): stage 5 T sweep 10-22 h, layers + loss 5-10 h, stage 6 Optuna 5-9 h,
+stage 7 main 7.5-11.5 h, stage 8 A1-A4 5-10 h, A5-A8 6-13 h; about 40-75 h total. Two parallel processes would roughly halve it (untested; changes `num_threads`, recheck reproducibility).
+Timing-only runs (3 epochs, CNN/LSTM/CNN-LSTM) are in `results/runs/timing/`.
 
 ## Pending work (from the latest review)
 
-1. Label "units per direction" as `[INFERENCE]` for CNN-BiLSTM and CLATT (after re-reading Table 1 / Fig. 4).
-2. Add `CUBLAS_WORKSPACE_CONFIG` to `set_seed`.
-3. Move each baseline's `structure` and `n_params` into its class so `__main__.py` has less hardcoding.
-4. Tighten the one-batch overfit test (compare with `var(y)`) and add a test for the BiLSTM last state.
-5. Create `results/tables` in `__main__.py`; write the CSV with `convert_dtypes()`.
+1. Add an end-to-end `train_one` reproducibility test for a deep model (same seed twice with `force=True` gives equal metrics). Only Persistence is covered in tests; deep models were checked by hand on the smoke run.
+2. `mape` / `smape` can be `inf` or `nan` when `y_true == 0`; `json.dumps` then writes invalid JSON.
+3. Older review items not re-checked since stage 2: baselines' `structure`/`n_params` hardcoded in `src/models/__main__.py`; overfit test compares with `var(y)`; test for the BiLSTM last state; `results/tables` creation and `convert_dtypes()` in `__main__.py`.
 
 ## Working notes
 
 - `changes.diff` in the repo root is a temporary file. Do not commit it.
-- When staging, include the deleted files (`clatt.py`, `lstm.py`, `cnn_lstm.py`, `cnn_bilstm.py`) together with the other changes.
+- `results/runs/` and `*.pt` are git-ignored; tables and figures under `results/` are not.

@@ -1,20 +1,20 @@
 """The five deep models of the paper, built from Table 1 hyperparameters."""
+import yaml
+
+from src.data import ROOT
 from src.models.cnn import CNN
 from src.models.recurrent import ConvRNN
 
-# [PAPER] Table 1: hidden units per direction [INFERENCE], conv filters, dropout, batch size, epochs
-TABLE1 = {
-    "CNN": dict(hidden=64, filters=31, dropout=0.1, batch=62, epochs=30),
-    "LSTM": dict(hidden=32, filters=None, dropout=0.2, batch=64, epochs=30),
-    "CNN-LSTM": dict(hidden=114, filters=32, dropout=0.2, batch=32, epochs=46),
-    "CNN-BiLSTM": dict(hidden=126, filters=21, dropout=0.3, batch=23, epochs=50),
-    "CLATT": dict(hidden=168, filters=77, dropout=0.3, batch=32, epochs=56),
-}
-MODELS = list(TABLE1)
+CONFIGS = ROOT / "configs" / "models"
+
+MODELS = ["CNN", "LSTM", "CNN-LSTM", "CNN-BiLSTM", "CLATT"]
+# [PAPER] Table 1, one YAML per model: hidden, filters, dropout, batch_size, max_epochs
+TABLE1 = {m: yaml.safe_load((CONFIGS / f"{m.lower().replace('-', '_')}.yaml").read_text()) for m in MODELS}
 
 
-def build(name, n_features=3, T=68):
-    p = TABLE1[name]
+def build(name, n_features=3, T=68, **hp):
+    """`hp` overrides Table 1 values (hidden, filters, dropout)."""
+    p = {**TABLE1[name], **hp}
     if name == "CNN":
         return CNN(n_features, T, p["hidden"], p["filters"], p["dropout"])
     return ConvRNN(n_features, p["hidden"], p["filters"], p["dropout"],

@@ -26,7 +26,7 @@ def main():
     rows = []
     for name, p in TABLE1.items():
         rows.append({"model": name, "n_features": len(FEATURES), "n_params": n_params(build(name)), "kernel": 3,
-                     "layers": None if name == "CNN" else 2, **p, "structure": STRUCTURE[name], "source": SOURCE[name]})
+                     "layers": None if name == "CNN" else 2, **{k: v for k, v in p.items() if k != "name"}, "structure": STRUCTURE[name], "source": SOURCE[name]})
     rows.append({**rows[-1], "model": "CLATT- (rho only)", "n_features": 1, "n_params": n_params(build("CLATT", 1)),
                  "source": SOURCE["CLATT"] + "; rho-only input as Table 6 of the paper [PAPER]"})
     for name in BASELINES:

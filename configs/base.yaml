@@ -1,0 +1,7 @@
+# Shared settings (plan section 5.1). Model values live in configs/models/<model>.yaml.
+T: 68            # [PAPER] time step
+k: 20            # rolling Pearson window for the label
+lr: 0.001        # nhóm tự chọn
+clip_norm: 1.0   # nhóm tự chọn
+patience: 10     # early stopping on val MSE (scaled), nhóm tự chọn
+num_threads: 4   # fixed for reproducible CPU runs

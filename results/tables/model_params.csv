@@ -1,4 +1,4 @@
-model,n_features,n_params,kernel,layers,hidden,filters,dropout,batch,epochs,structure,source
+model,n_features,n_params,kernel,layers,hidden,filters,dropout,batch_size,max_epochs,structure,source
 CNN,3,135351,3.0,,64.0,31.0,0.1,62.0,30.0,"Conv1D -> ReLU -> Dropout -> Flatten -> Dense(hidden, ReLU) -> Dense(1)","hidden/filters/dropout/batch/epochs [PAPER] Table 1; structure [INFERENCE]; kernel 3, padding same: nhóm tự chọn"
 LSTM,3,13217,3.0,2.0,32.0,,0.2,64.0,30.0,LSTM x2 -> last state -> Dropout -> Dense(1),hidden/dropout/batch/epochs [PAPER] Table 1; 2 layers [PAPER] Table 3; last state [PAPER] (return_sequences=False); dropout placement [INFERENCE]
 CNN-LSTM,3,172803,3.0,2.0,114.0,32.0,0.2,32.0,46.0,Conv1D -> ReLU -> Dropout -> LSTM x2 -> last state -> Dropout -> Dense(1),"hidden/filters/dropout/batch/epochs [PAPER] Table 1; 2 layers [PAPER] Table 3; last state [PAPER]; dropout placement [INFERENCE]; kernel 3, padding same: nhóm tự chọn"

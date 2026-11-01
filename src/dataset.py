@@ -32,8 +32,16 @@ def make_dataset(df, T=T, k=K, features=FEATURES):
     v = scaler.transform(df[features].to_numpy()).astype(np.float32)
     X = sliding_window_view(v, T, axis=0)[:n].transpose(0, 2, 1)  # (n, T, F)
     y = v[T:, features.index("rho")] if "rho" in features else None
+    rho = df.rho.to_numpy()
     return {"X": X, "y": y, "x_end": df.index[T - 1: T - 1 + n], "y_date": df.index[T:],
+            "y_raw": rho[T:], "rho_prev": rho[T - 1: T - 1 + n],  # original scale, for metrics
             "splits": splits, "scaler": scaler, "train_rows": train_rows[features]}
+
+
+def get_pair_data(pair, T=T, k=K, features=FEATURES):
+    """`pair` is 'sz.300015_sz.300274'; rebuilt from raw CSVs so k and T can vary."""
+    a, b = pair.split("_")
+    return make_dataset(pair_frame(returns_table([a, b]), a, b, k), T, k, features)
 
 
 def halt_runs(halted, market_days):

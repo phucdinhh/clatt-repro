@@ -1,0 +1,7 @@
+# [PAPER] Table 1 (hidden = units per direction for BiLSTM [INFERENCE])
+name: CLATT
+hidden: 168
+filters: 77
+dropout: 0.3
+batch_size: 32
+max_epochs: 56

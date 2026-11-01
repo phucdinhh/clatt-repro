@@ -1,0 +1,7 @@
+# [PAPER] Table 1 (hidden = units per direction for BiLSTM [INFERENCE])
+name: CNN
+hidden: 64
+filters: 31
+dropout: 0.1
+batch_size: 62
+max_epochs: 30

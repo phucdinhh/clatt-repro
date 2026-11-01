@@ -1,0 +1,7 @@
+# [PAPER] Table 1 (hidden = units per direction for BiLSTM [INFERENCE])
+name: LSTM
+hidden: 32
+filters: null
+dropout: 0.2
+batch_size: 64
+max_epochs: 30
