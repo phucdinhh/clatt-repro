@@ -5,3 +5,6 @@ lr: 0.001        # nhóm tự chọn
 clip_norm: 1.0   # nhóm tự chọn
 patience: 10     # early stopping on val MSE (scaled), nhóm tự chọn
 num_threads: 4   # fixed for reproducible CPU runs
+layers: 2        # [PAPER] LSTM layers (Table 3); stage 5 sweeps 1-4
+loss: mse        # [PAPER] training loss, mse or mae (Table 4); early stopping stays on val MSE
+fixed_split_T: null  # stage 5: split as if T were this, so val label dates match across T

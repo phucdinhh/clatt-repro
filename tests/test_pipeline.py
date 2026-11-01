@@ -64,3 +64,20 @@ def test_scaler_fit_on_train_only(datasets):
 def test_shapes(datasets):
     for name, (_, ds) in datasets.items():
         assert ds["X"].shape[1:] == (T, 3) and len(ds["X"]) == len(ds["y"]), name
+
+
+def test_fixed_split_T_keeps_label_dates(frames):
+    from scripts.leakage_checks import ranh_gioi
+    returns = returns_table(CODES)
+    grid = [20, 40, 60, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 90]
+    for name, df in frames.items():
+        a, b = name.split("_")
+        joined = returns[[a, b]].dropna().index
+        ref = make_dataset(df, T=90)
+        for t in grid:
+            ds = make_dataset(df, T=t, fixed_split_T=90)
+            for split, s in ds["splits"].items():
+                assert ds["y_date"][s].equals(ref["y_date"][ref["splits"][split]]), (name, t, split)
+            assert ranh_gioi(joined, df, ds)["status"] == "PASS", (name, t)  # purge of T=90 covers smaller T
+    with pytest.raises(ValueError):
+        make_dataset(df, T=90, fixed_split_T=68)

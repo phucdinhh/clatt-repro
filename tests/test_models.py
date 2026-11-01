@@ -86,3 +86,8 @@ def test_simple_baselines():
     ridge = RidgeWindow().fit(X[:250], y[:250], X[250:], y[250:])
     assert ridge.predict(X).shape == y.shape and ridge.n_params == T + 1
     assert set(BASELINES) == {"Persistence", "MA5", "AR(1)", "Ridge"}
+
+
+def test_lstm_layers_option():
+    assert build("CLATT", layers=3).rnn.num_layers == 3
+    assert build("CLATT").rnn.num_layers == 2

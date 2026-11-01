@@ -61,6 +61,7 @@ def fit(model, X_tr, y_tr, X_va, y_va, cfg, seed):
     loader = DataLoader(TensorDataset(torch.tensor(X_tr), torch.tensor(y_tr)), batch_size=cfg["batch_size"],
                         shuffle=True, generator=torch.Generator().manual_seed(seed))
     opt = torch.optim.Adam(model.parameters(), lr=cfg["lr"])
+    loss_fn = {"mse": torch.nn.functional.mse_loss, "mae": torch.nn.functional.l1_loss}[cfg["loss"]]
     best, best_state, best_epoch, wait, history = np.inf, None, 0, 0, []
     for epoch in range(1, cfg["max_epochs"] + 1):
         start = time.perf_counter()
@@ -68,7 +69,7 @@ def fit(model, X_tr, y_tr, X_va, y_va, cfg, seed):
         total = 0.0
         for xb, yb in loader:
             opt.zero_grad()
-            loss = torch.nn.functional.mse_loss(model(xb).squeeze(1), yb)
+            loss = loss_fn(model(xb).squeeze(1), yb)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), cfg["clip_norm"])
             opt.step()
@@ -115,7 +116,7 @@ def train_one(model_name, pair, seed, cfg, split_eval=("val",), exp="smoke", fin
     set_seed(seed)
     torch.set_num_threads(cfg["num_threads"])
 
-    data = get_pair_data(pair, cfg["T"], cfg["k"])
+    data = get_pair_data(pair, cfg["T"], cfg["k"], fixed_split_T=cfg["fixed_split_T"])
     X, y, s = data["X"], data["y"], data["splits"]
     start = time.perf_counter()
     if model_name in BASELINES:
@@ -123,7 +124,7 @@ def train_one(model_name, pair, seed, cfg, split_eval=("val",), exp="smoke", fin
         info = {"n_params": model.n_params}
         run_predict = model.predict
     else:
-        model = build(model_name, X.shape[2], cfg["T"], **{k: cfg[k] for k in ("hidden", "filters", "dropout")})
+        model = build(model_name, X.shape[2], cfg["T"], **{k: cfg[k] for k in ("hidden", "filters", "dropout", "layers")})
         history, best_epoch = fit(model, X[s["train"]], y[s["train"]], X[s["val"]], y[s["val"]], cfg, seed)
         pd.DataFrame(history).to_csv(out / "history.csv", index=False)
         torch.save(model.state_dict(), out / "model.pt")

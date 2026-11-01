@@ -2,7 +2,7 @@
 
 Reproduction of the CLATT paper (short-term stock correlation forecasting with CNN-BiLSTM + attention) in PyTorch.
 Source documents are in `docs/`: the experiment plan (PDF, sections 3, 4.1-4.4, 5, 6) and the paper (PDF).
-Current state: stage 3 is done (commit d0bf4f4; smoke run in `results/runs/smoke/`). Stage 4 (leakage checks) is done, not committed: all gates PASS (see PROGRESS.md and `results/tables/leakage_checks.csv`).
+Current state: stage 3 is done (commit d0bf4f4; smoke run in `results/runs/smoke/`). Stage 4 (leakage checks) is done, not committed: all gates PASS (see PROGRESS.md and `results/tables/leakage_checks.csv`). Stage 5 (choose T, layers, loss on val) is **in progress**: code done, the reduced T sweep {20, 40, 60, 68, 72, 90} is running (started 2026-11-01 21:27, log `results/logs/stage5_sweep_T.out`). Do not write T*/L*/loss* into `configs/base.yaml` until the user confirms; proposals go to `configs/proposed_stage5.yaml`.
 **Do not run `--final` (test split) and do not tune anything based on smoke results** unless asked.
 
 ## Code map
@@ -11,24 +11,26 @@ Current state: stage 3 is done (commit d0bf4f4; smoke run in `results/runs/smoke
 |---|---|
 | `src/data.py` | Constants (ROOT, CODES, GROUPS, START, END, RESULTS, PROCESSED), `load_raw`, `traded` |
 | `src/features.py` | Log-returns, stock pairing (`pairs()`), rho label = rolling Pearson (k=20), `rho_stats` |
-| `src/dataset.py` | T=68, FEATURES=[rho, r_A, r_B], sliding windows, purged train/val/test split (7/1/2), MinMax fit on train only. `make_dataset` also returns `y_raw` and `rho_prev` (original scale). `get_pair_data(pair)` rebuilds a pair from raw CSVs. `make_dataset(..., target="future_window")` makes y = Pearson over returns t+1..t+k (no overlap with X; purge grows by k-1; for ablation A5, not yet trained). `python -m src.dataset` writes the stage-1 tables and figures |
+| `src/dataset.py` | T=68, FEATURES=[rho, r_A, r_B], sliding windows, purged train/val/test split (7/1/2), MinMax fit on train only. `make_dataset` also returns `y_raw` and `rho_prev` (original scale). `get_pair_data(pair)` rebuilds a pair from raw CSVs. `make_dataset(..., target="future_window")` makes y = Pearson over returns t+1..t+k (no overlap with X; purge grows by k-1; for ablation A5, not yet trained). `python -m src.dataset` writes the stage-1 tables and figures. `fixed_split_T` (>= T) splits as if T were that value, so every split keeps the same label dates for any T (stage 5 uses 90) |
 | `src/models/__init__.py` | Loads `TABLE1` from `configs/models/*.yaml`; `MODELS`, `build(name, n_features, T, **hp)`, `n_params` |
 | `src/models/cnn.py`, `recurrent.py` | `CNN`; `Attention` (Eq. 8-9) and `ConvRNN` (LSTM, CNN-LSTM, CNN-BiLSTM, CLATT) |
 | `src/models/__main__.py` | `python -m src.models` writes `results/tables/model_params.csv` |
 | `src/baselines.py` | Persistence, MovingAverage (MA5), AR1, RidgeWindow; `BASELINES` dict |
 | `src/metrics.py` | mse, rmse, mae, r2, mape, mape_excl, smape, n_near_zero, skill, r2_delta, dir_acc, `compute_all`. All take original-scale `y_true, y_pred, rho_prev` |
-| `src/train.py` | `set_seed`, `load_config`, `fit` (Adam, clip, early stopping), `train_one` (saves everything under `results/runs/<exp>/<model>/<pair>/seed<k>/`) |
-| `src/run.py` | CLI: `--exp --models --pairs/--group --seeds --config-override --final --force`; logs to `results/logs/<exp>.log` |
+| `src/train.py` | `set_seed`, `load_config`, `fit` (Adam, clip, early stopping), `train_one` (saves everything under `results/runs/<exp>/<model>/<pair>/seed<k>/`); `fit` uses `cfg["loss"]` (mse or mae) and `build` gets `cfg["layers"]` |
+| `src/run.py` | CLI: `--exp --models --pairs/--group --seeds --config-override --final --force`; logs to `results/logs/<exp>.log`. `--exp` may be nested (`sweep_T/T20`) |
+| `scripts/stage5.sh` | Stage 5 sweeps, CLATT, 12 pairs, seeds 0-2, `fixed_split_T=90`: `T <T...>` -> `sweep_T/T<T>`; `L <T*> <L...>` -> `sweep_L/L<L>`; `loss <T*> <L*> mae` -> `sweep_loss/mae` (L=2 and mse runs are reused from earlier sweeps) |
+| `scripts/stage5_report.py` | Writes `timestep.csv`, `lstm_layers.csv`, `loss_compare.csv` (with paper Table 3/4 R²), `timestep_curve.png`, `configs/proposed_stage5.yaml`. Skips sweeps with fewer than 36 runs. Selection: lowest val MSE averaged over both groups; the paper's value (68, 2, mse) wins if within 1 std over seeds |
 | `src/aggregate.py` | `python -m src.aggregate <exp>` writes `results/tables/<exp>_metrics_long.csv` and `<exp>_summary.csv` |
 | `src/plots.py` | `python -m src.plots <exp>` writes `results/figures/<exp>_loss_curves.png` |
 | `src/evaluate.py`, `stats.py`, `tune.py` | Empty files, not started |
 | `scripts/leakage_checks.py` | Stage 4: the 9 checks of plan section 7 -> `results/tables/leakage_checks.csv` (check, pair, value, threshold, status, note). Checks 6-7 train CLATT on 2 pairs in memory (val only, nothing under `results/runs/`); check 7 is gated by Ridge, the CLATT run is MEASURE only; the CSV is rewritten after each pair. Check 9 (`nhan_khong_chong_lan`) passes only for the `future_window` label; the main `next` label shares 19 of 20 returns with X by design |
-| `tests/` | `test_leakage.py` (checks 1-5 and 9), `test_pipeline.py` (data), `test_models.py` (plan 4.4 + baselines), `test_metrics.py` (metrics vs sklearn, hand examples, `--final` guard, `lr=1e-3` override parsing, exact Persistence predictions and skip/config-diff checks via `train_one` into `tmp_path`) |
-| `configs/` | `base.yaml` (T, k, lr, clip_norm, patience, num_threads), `models/<model>.yaml` (hidden, filters, dropout, batch_size, max_epochs), `experiments/` |
+| `tests/` | `test_leakage.py` (checks 1-5 and 9), `test_pipeline.py` (data, `fixed_split_T` label dates for all 14 T), `test_models.py` (plan 4.4 + baselines), `test_metrics.py` (metrics vs sklearn, hand examples, `--final` guard, `lr=1e-3` override parsing, exact Persistence predictions and skip/config-diff checks via `train_one` into `tmp_path`) |
+| `configs/` | `base.yaml` (T, k, lr, clip_norm, patience, num_threads, layers, loss, fixed_split_T), `models/<model>.yaml` (hidden, filters, dropout, batch_size, max_epochs), `experiments/` |
 
 ## Commands
 
-- Tests: `python -m pytest -q` (about 90 s, 41 tests; fixtures need the real data in `data/`)
+- Tests: `python -m pytest -q` (about 90 s, 43 tests; fixtures need the real data in `data/`)
 - Leakage checks: `python -m scripts.leakage_checks` (about 10 min, mostly the 4 CLATT trainings)
 - Smoke run: `python -m src.run --exp smoke --models CLATT CNN-BiLSTM Persistence --pairs 300015_300274 --seeds 0`
 - Aggregate and plot: `python -m src.aggregate smoke`, `python -m src.plots smoke`
@@ -42,7 +44,7 @@ Current state: stage 3 is done (commit d0bf4f4; smoke run in `results/runs/smoke
 - `hidden` means **units per direction** for BiLSTM. This is an interpretation, not stated by the paper (`[INFERENCE]`).
 - Conv1D: kernel=3, padding="same" (group's own choice). LSTM has 2 layers. Without attention, models use the last state of the top layer (both directions for BiLSTM). CLATT uses the full sequence plus attention.
 - "CLATT- (rho only)" is CLATT with `n_features=1`.
-- Training: Adam lr 1e-3, MSE on scaled y, clip_grad_norm 1.0, early stopping patience 10 on scaled val MSE, best weights restored. `batch_size` and `max_epochs` come from `configs/models/<name>.yaml`.
+- Training: Adam lr 1e-3, MSE (or MAE via `loss`) on scaled y, clip_grad_norm 1.0, early stopping patience 10 on scaled val MSE, best weights restored. `batch_size` and `max_epochs` come from `configs/models/<name>.yaml`. With `loss: mae`, early stopping still uses val MSE (our choice; Keras would use val MAE).
 - A run is complete only when `metrics.json` exists (it is written last). An existing run is skipped only if its saved `config.yaml` (minus `split_label_dates`) equals the new run config; any difference (e.g. `split_eval` from `--final`, an override) raises `ValueError` naming the keys. Use a new `--exp` or `--force`.
 - `--config-override key=value` values are parsed as YAML; a string for a float key (`lr=1e-3`, which PyYAML reads as text) is cast to `float`. Unknown keys raise `KeyError`.
 - `split_eval` may include `"test"` only with `--final`; otherwise `train_one` raises `ValueError`.
@@ -79,8 +81,9 @@ Timing-only runs (3 epochs, CNN/LSTM/CNN-LSTM) are in `results/runs/timing/`.
 
 1. Add an end-to-end `train_one` reproducibility test for a deep model (same seed twice with `force=True` gives equal metrics). Only Persistence is covered in tests; deep models were checked by hand on the smoke run.
 2. `mape` / `smape` can be `inf` or `nan` when `y_true == 0`; `json.dumps` then writes invalid JSON.
-3. `ruff check` flags 8 import-order (I001) issues in `src/`, `tests/` and `scripts/` (style only).
-4. Older review items not re-checked since stage 2: baselines' `structure`/`n_params` hardcoded in `src/models/__main__.py`; overfit test compares with `var(y)`; test for the BiLSTM last state; `results/tables` creation and `convert_dtypes()` in `__main__.py`.
+3. Old `smoke`/`timing` runs lack the new keys `layers`, `loss`, `fixed_split_T`; rerunning them without `--force` raises the config-diff error.
+4. `ruff check` flags 8 import-order (I001) issues in `src/`, `tests/` and `scripts/` (style only).
+5. Older review items not re-checked since stage 2: baselines' `structure`/`n_params` hardcoded in `src/models/__main__.py`; overfit test compares with `var(y)`; test for the BiLSTM last state; `results/tables` creation and `convert_dtypes()` in `__main__.py`.
 
 ## Working notes
 

@@ -39,7 +39,7 @@ def main(argv=None):
         chosen = [f"{a}_{b}" for g, a, b in pairs() if args.group in ("all", str(g))]
     models = [resolve(m, ALL_MODELS) for m in args.models]
 
-    (RESULTS / "logs").mkdir(parents=True, exist_ok=True)
+    (RESULTS / "logs" / f"{args.exp}.log").parent.mkdir(parents=True, exist_ok=True)  # exp may be nested, e.g. sweep_T/T20
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", handlers=[
         logging.StreamHandler(), logging.FileHandler(RESULTS / "logs" / f"{args.exp}.log")])
     jobs = [(m, pr, s) for m in models for pr in chosen for s in args.seeds]

@@ -10,7 +10,7 @@ This file records what each stage produced, how the data and code differ from th
 | 2. Models and baselines | Done | a42ac39 |
 | 3. Training loop and evaluation | Done | d0bf4f4 |
 | 4. Leakage checks | Done (all gates PASS) | not committed |
-| 5. Choose T, layers, loss | Not started | |
+| 5. Choose T, layers, loss | In progress (T sweep running) | not committed |
 | 6. Protocol B tuning (Optuna) | Not started | |
 | 7. Main test run (`--final`) | Not started | |
 | 8. Ablations and packaging | Not started | |
@@ -84,6 +84,15 @@ Status per check (full run of `python -m scripts.leakage_checks`, no warnings):
 
 Check 7 was first gated on CLATT copying `y = X[:, -1, 0]` and failed at R² 0.967 < 0.98. That tested model capacity, not the pipeline. The gate is now Ridge on the same y (threshold unchanged at 0.98), which reaches R² 1.0000 on both pairs, so the pipeline delivers the information. CLATT is kept as a non-gating measurement.
 
+## Stage 5: choose T, LSTM layers, loss (val only)
+
+Code: `fixed_split_T` in `make_dataset`, config keys `layers`, `loss`, `fixed_split_T` (base.yaml), `scripts/stage5.sh`, `scripts/stage5_report.py`. Tests: 43 passed; leakage check 5 still PASS.
+
+- Fair comparison across T: splits are computed once with T_max = 90 and shifted, so train, val and test have the same label dates for every T (2017-05-24..2020-01-15, 2020-07-07..2020-11-18, 2021-05-06..2022-01-28 on 300015_300274). Tested for all 12 pairs and 14 T.
+- Time estimate for the full T grid (14 T x 12 pairs x 3 seeds = 504 runs): about 11 h, over the 6 h limit. So only {20, 40, 60, 68, 72, 90} (216 runs, about 4-8 h) was started on 2026-11-01 21:27. The user decides on the other 8 T after the report.
+- With `loss: mae`, early stopping still uses val MSE so both losses are selected on the same metric (our choice).
+- To do: report T table and figure, propose T*; then `sweep_L` (L 1, 3, 4; L=2 reused) and `sweep_loss` (mae; mse reused); write `configs/proposed_stage5.yaml`; base.yaml only after the user confirms.
+
 ## Open decisions (plan section 17)
 
 - Inner join or forward fill when aligning pairs: inner join is implemented, but the choice is not formally signed off.
@@ -91,6 +100,7 @@ Check 7 was first gated on CLATT copying `y = X[:, -1, 0]` and failed at R² 0.9
 - PyTorch or Keras: PyTorch is in use.
 - Run protocol B or only protocol A: not decided. This affects the stage 6 time budget.
 - Overfit test criterion (stage 2): keep "95% drop" or require 3,000 steps.
+- Stage 5: run the remaining 8 T values (63-67, 69-71) or not; confirm T*, L*, loss* before writing base.yaml.
 - Run two processes in parallel to roughly halve the runtime: untested.
 
 ## Code to-dos

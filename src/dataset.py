@@ -23,16 +23,23 @@ def split_bounds(n, gap, fracs=FRACS):
             "test": slice(n_tr + n_va + 2 * gap, n)}
 
 
-def make_dataset(df, T=T, k=K, features=FEATURES, target="next"):
+def make_dataset(df, T=T, k=K, features=FEATURES, target="next", fixed_split_T=None):
     """Sample i: X = rows i..i+T-1 of `features`, y = rho at row i+T-1+h. Scaler fit on train rows only.
 
     target="next": h=1, y = rho(t+1) (overlaps X by k-1 returns).
     target="future_window": h=k, y = Pearson over returns t+1..t+k, no return shared with X.
+    fixed_split_T: split as if T were this (>= T), so every split keeps the same label dates for any T.
     """
     h = {"next": 1, "future_window": k}[target]
     n = len(df) - T - h + 1
-    splits = split_bounds(n, gap=k + T + h - 1)  # label reaches h-1 rows further, so purge h-1 more
-    train_rows = df.iloc[: splits["train"].stop + T - 1 + h]  # every row a train input or label touches
+    Ts = fixed_split_T or T
+    if Ts < T:
+        raise ValueError(f"fixed_split_T={Ts} < T={T}")
+    # sample j under T has the label date of sample j-(Ts-T) under Ts; the purge of Ts covers T
+    splits = {name: slice(s.start + Ts - T, s.stop + Ts - T)
+              for name, s in split_bounds(n - (Ts - T), gap=k + Ts + h - 1).items()}
+    s_tr = splits["train"]
+    train_rows = df.iloc[s_tr.start: s_tr.stop + T - 1 + h]  # every row a train input or label touches
     scaler = MinMaxScaler().fit(train_rows[features].to_numpy())
     v = scaler.transform(df[features].to_numpy()).astype(np.float32)
     X = sliding_window_view(v, T, axis=0)[:n].transpose(0, 2, 1)  # (n, T, F)
@@ -43,10 +50,10 @@ def make_dataset(df, T=T, k=K, features=FEATURES, target="next"):
             "splits": splits, "scaler": scaler, "train_rows": train_rows[features], "h": h}
 
 
-def get_pair_data(pair, T=T, k=K, features=FEATURES):
+def get_pair_data(pair, T=T, k=K, features=FEATURES, fixed_split_T=None):
     """`pair` is 'sz.300015_sz.300274'; rebuilt from raw CSVs so k and T can vary."""
     a, b = pair.split("_")
-    return make_dataset(pair_frame(returns_table([a, b]), a, b, k), T, k, features)
+    return make_dataset(pair_frame(returns_table([a, b]), a, b, k), T, k, features, fixed_split_T=fixed_split_T)
 
 
 def halt_runs(halted, market_days):

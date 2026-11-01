@@ -13,12 +13,13 @@ TABLE1 = {m: yaml.safe_load((CONFIGS / f"{m.lower().replace('-', '_')}.yaml").re
 
 
 def build(name, n_features=3, T=68, **hp):
-    """`hp` overrides Table 1 values (hidden, filters, dropout)."""
+    """`hp` overrides Table 1 values (hidden, filters, dropout) and may set `layers` (LSTM depth, default 2)."""
     p = {**TABLE1[name], **hp}
     if name == "CNN":
         return CNN(n_features, T, p["hidden"], p["filters"], p["dropout"])
     return ConvRNN(n_features, p["hidden"], p["filters"], p["dropout"],
-                   bidirectional=name in ("CNN-BiLSTM", "CLATT"), attention=name == "CLATT")
+                   bidirectional=name in ("CNN-BiLSTM", "CLATT"), attention=name == "CLATT",
+                   layers=p.get("layers", 2))
 
 
 def n_params(model):
