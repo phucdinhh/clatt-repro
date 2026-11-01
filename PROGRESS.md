@@ -8,8 +8,8 @@ This file records what each stage produced, how the data and code differ from th
 | 0. Download script | Done | b439a5e |
 | 1. Data pipeline | Done | b439a5e |
 | 2. Models and baselines | Done | a42ac39 |
-| 3. Training loop and evaluation | Done | not committed |
-| 4. Leakage checks | Not started | |
+| 3. Training loop and evaluation | Done | d0bf4f4 |
+| 4. Leakage checks | Done (all gates PASS) | not committed |
 | 5. Choose T, layers, loss | Not started | |
 | 6. Protocol B tuning (Optuna) | Not started | |
 | 7. Main test run (`--final`) | Not started | |
@@ -63,6 +63,26 @@ Bugs found and fixed during review:
 - Persistence `dir_acc` came out as 0.54 because of float32 rounding; it is now exactly 0.
 - Skipping an existing run ignored config changes; it now compares the saved `config.yaml`.
 - `--config-override lr=1e-3` was read as a string; it is now a float.
+
+## Stage 4: leakage checks
+
+Code: `scripts/leakage_checks.py`, `tests/test_leakage.py`, `target="future_window"` option in `make_dataset`. Results: `results/tables/leakage_checks.csv` (rewritten after each pair).
+
+Status per check (full run of `python -m scripts.leakage_checks`, no warnings):
+
+| # | Check | Result |
+|---|---|---|
+| 1 | ranh_gioi | 12/12 PASS (pytest) |
+| 2 | thu_tu_thoi_gian | 12/12 PASS (pytest) |
+| 3 | scaler | 12/12 PASS (pytest; range derived from sample dates, also compared with the train+val range) |
+| 4 | dien_thieu | 12/12 PASS (pytest; no bfill/backfill/interpolate/fillna in src/ or scripts/) |
+| 5 | chon_sieu_tham_so | PASS (tune.py empty, rerun at stage 6; `preds_test.csv` files are listed in the note only) |
+| 6 | xao_tron_nhan | 2/2 PASS (300015_300274 R² -0.012; 300014_300122 R² 0.0006) |
+| 7 | dich_nhan | 2/2 PASS, gated by Ridge (R² 1.0000 on both pairs). CLATT as a MEASURE row (`dich_nhan_clatt`): R² 0.967 and 0.994 |
+| 8 | chong_lan_cua_so | measurement only (status MEASURE, no threshold); computed in `static_checks`, before the training checks. Mean persistence R² on val: group 1 0.817, group 2 0.830 (with the `future_window` label: -2.46 and -1.54) |
+| 9 | nhan_khong_chong_lan | the main `next` label shares 19 of 20 returns with X (by the paper's design); only the `future_window` label is disjoint, and that is what pytest checks (no shared return, matches a direct Pearson). Persistence R² on val is a consequence of the overlap |
+
+Check 7 was first gated on CLATT copying `y = X[:, -1, 0]` and failed at R² 0.967 < 0.98. That tested model capacity, not the pipeline. The gate is now Ridge on the same y (threshold unchanged at 0.98), which reaches R² 1.0000 on both pairs, so the pipeline delivers the information. CLATT is kept as a non-gating measurement.
 
 ## Open decisions (plan section 17)
 

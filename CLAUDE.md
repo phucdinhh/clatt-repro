@@ -2,7 +2,7 @@
 
 Reproduction of the CLATT paper (short-term stock correlation forecasting with CNN-BiLSTM + attention) in PyTorch.
 Source documents are in `docs/`: the experiment plan (PDF, sections 3, 4.1-4.4, 5, 6) and the paper (PDF).
-Current state: stage 3 (training loop, metrics, CLI, aggregation) is written and a smoke run exists in `results/runs/smoke/`.
+Current state: stage 3 is done (commit d0bf4f4; smoke run in `results/runs/smoke/`). Stage 4 (leakage checks) is done, not committed: all gates PASS (see PROGRESS.md and `results/tables/leakage_checks.csv`).
 **Do not run `--final` (test split) and do not tune anything based on smoke results** unless asked.
 
 ## Code map
@@ -11,7 +11,7 @@ Current state: stage 3 (training loop, metrics, CLI, aggregation) is written and
 |---|---|
 | `src/data.py` | Constants (ROOT, CODES, GROUPS, START, END, RESULTS, PROCESSED), `load_raw`, `traded` |
 | `src/features.py` | Log-returns, stock pairing (`pairs()`), rho label = rolling Pearson (k=20), `rho_stats` |
-| `src/dataset.py` | T=68, FEATURES=[rho, r_A, r_B], sliding windows, purged train/val/test split (7/1/2), MinMax fit on train only. `make_dataset` also returns `y_raw` and `rho_prev` (original scale). `get_pair_data(pair)` rebuilds a pair from raw CSVs. `python -m src.dataset` writes the stage-1 tables and figures |
+| `src/dataset.py` | T=68, FEATURES=[rho, r_A, r_B], sliding windows, purged train/val/test split (7/1/2), MinMax fit on train only. `make_dataset` also returns `y_raw` and `rho_prev` (original scale). `get_pair_data(pair)` rebuilds a pair from raw CSVs. `make_dataset(..., target="future_window")` makes y = Pearson over returns t+1..t+k (no overlap with X; purge grows by k-1; for ablation A5, not yet trained). `python -m src.dataset` writes the stage-1 tables and figures |
 | `src/models/__init__.py` | Loads `TABLE1` from `configs/models/*.yaml`; `MODELS`, `build(name, n_features, T, **hp)`, `n_params` |
 | `src/models/cnn.py`, `recurrent.py` | `CNN`; `Attention` (Eq. 8-9) and `ConvRNN` (LSTM, CNN-LSTM, CNN-BiLSTM, CLATT) |
 | `src/models/__main__.py` | `python -m src.models` writes `results/tables/model_params.csv` |
@@ -22,12 +22,14 @@ Current state: stage 3 (training loop, metrics, CLI, aggregation) is written and
 | `src/aggregate.py` | `python -m src.aggregate <exp>` writes `results/tables/<exp>_metrics_long.csv` and `<exp>_summary.csv` |
 | `src/plots.py` | `python -m src.plots <exp>` writes `results/figures/<exp>_loss_curves.png` |
 | `src/evaluate.py`, `stats.py`, `tune.py` | Empty files, not started |
-| `tests/` | `test_pipeline.py` (data), `test_models.py` (plan 4.4 + baselines), `test_metrics.py` (metrics vs sklearn, hand examples, `--final` guard, `lr=1e-3` override parsing, exact Persistence predictions and skip/config-diff checks via `train_one` into `tmp_path`) |
+| `scripts/leakage_checks.py` | Stage 4: the 9 checks of plan section 7 -> `results/tables/leakage_checks.csv` (check, pair, value, threshold, status, note). Checks 6-7 train CLATT on 2 pairs in memory (val only, nothing under `results/runs/`); check 7 is gated by Ridge, the CLATT run is MEASURE only; the CSV is rewritten after each pair. Check 9 (`nhan_khong_chong_lan`) passes only for the `future_window` label; the main `next` label shares 19 of 20 returns with X by design |
+| `tests/` | `test_leakage.py` (checks 1-5 and 9), `test_pipeline.py` (data), `test_models.py` (plan 4.4 + baselines), `test_metrics.py` (metrics vs sklearn, hand examples, `--final` guard, `lr=1e-3` override parsing, exact Persistence predictions and skip/config-diff checks via `train_one` into `tmp_path`) |
 | `configs/` | `base.yaml` (T, k, lr, clip_norm, patience, num_threads), `models/<model>.yaml` (hidden, filters, dropout, batch_size, max_epochs), `experiments/` |
 
 ## Commands
 
-- Tests: `python -m pytest -q` (about 85 s, 33 tests; fixtures need the real data in `data/`)
+- Tests: `python -m pytest -q` (about 90 s, 41 tests; fixtures need the real data in `data/`)
+- Leakage checks: `python -m scripts.leakage_checks` (about 10 min, mostly the 4 CLATT trainings)
 - Smoke run: `python -m src.run --exp smoke --models CLATT CNN-BiLSTM Persistence --pairs 300015_300274 --seeds 0`
 - Aggregate and plot: `python -m src.aggregate smoke`, `python -m src.plots smoke`
 - Parameter table: `python -m src.models`; data pipeline: `python -m src.dataset`
@@ -58,6 +60,14 @@ Current state: stage 3 (training loop, metrics, CLI, aggregation) is written and
 
 Loss curves converge normally. `--force` reruns give byte-identical `metrics.json` and `preds_val.csv` (apart from timings).
 
+## Leakage check results (stage 4, `results/tables/leakage_checks.csv`, val only)
+
+All gates PASS: checks 1-4 and `nhan_khong_chong_lan_ranh_gioi` 12/12, check 5 PASS, checks 6-7 2/2. A rerun with `-W error::RuntimeWarning` gives a byte-identical CSV.
+- Persistence R² on val (check 8, the free baseline to beat): group 1 mean 0.817, group 2 0.830. With the `future_window` label: -2.46 and -1.54.
+- CLATT copying y = rho(t) (`dich_nhan_clatt`, MEASURE): R² 0.967 and 0.994, so it is capacity-limited, not leaking.
+- Deviations from the stage 4 spec (**not yet signed off by the user**): check 7 is gated by Ridge, not CLATT. Check 5 lists `preds_test.csv` in the note but no longer fails on it (stage 7 will create them).
+- The scaler extra check reports "ok" on all 12 pairs, meaning val exceeds the train range, so a train+val-fit scaler would be caught.
+
 ## Measured timing (M-series, 8 cores, 4 threads, one pair, ~685 train samples)
 
 Seconds per epoch: CNN 0.13, LSTM 0.23, CNN-LSTM 0.94, CNN-BiLSTM 2.7, CLATT 2.8 (one CLATT run 70-155 s).
@@ -69,7 +79,8 @@ Timing-only runs (3 epochs, CNN/LSTM/CNN-LSTM) are in `results/runs/timing/`.
 
 1. Add an end-to-end `train_one` reproducibility test for a deep model (same seed twice with `force=True` gives equal metrics). Only Persistence is covered in tests; deep models were checked by hand on the smoke run.
 2. `mape` / `smape` can be `inf` or `nan` when `y_true == 0`; `json.dumps` then writes invalid JSON.
-3. Older review items not re-checked since stage 2: baselines' `structure`/`n_params` hardcoded in `src/models/__main__.py`; overfit test compares with `var(y)`; test for the BiLSTM last state; `results/tables` creation and `convert_dtypes()` in `__main__.py`.
+3. `ruff check` flags 8 import-order (I001) issues in `src/`, `tests/` and `scripts/` (style only).
+4. Older review items not re-checked since stage 2: baselines' `structure`/`n_params` hardcoded in `src/models/__main__.py`; overfit test compares with `var(y)`; test for the BiLSTM last state; `results/tables` creation and `convert_dtypes()` in `__main__.py`.
 
 ## Working notes
 

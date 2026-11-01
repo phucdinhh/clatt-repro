@@ -1,0 +1,92 @@
+check,pair,value,threshold,status,note
+ranh_gioi,sz.300015_sz.300274,0.0,0 shared return dates,PASS,train 2016-12-02..2020-02-27 | val 2020-03-02..2020-12-02 | test 2020-12-04..2022-01-28
+thu_tu_thoi_gian,sz.300015_sz.300274,1.0,1.0,PASS,n=1154
+scaler,sz.300015_sz.300274,0.0,<=1e-12,PASS,val-range check: ok
+dien_thieu,sz.300015_sz.300274,0.0,"0 dates outside A∩B, 0 grep hits",PASS,grep hits: none
+chong_lan_cua_so,sz.300015_sz.300274,0.7954116975191253,-,MEASURE,"corr(rho(t+1),rho(t))=0.9022"
+nhan_khong_chong_lan,sz.300015_sz.300274,-4.158192482417173,-,MEASURE,value = persistence R2 on val; samples with label∩X returns = 0; n=1135
+nhan_khong_chong_lan_ranh_gioi,sz.300015_sz.300274,0.0,0 shared return dates,PASS,train 2016-12-02..2020-01-21 | val 2020-01-23..2020-11-20 | test 2020-11-24..2022-01-28
+ranh_gioi,sz.300015_sz.300347,0.0,0 shared return dates,PASS,train 2016-12-02..2020-02-28 | val 2020-03-03..2020-12-02 | test 2020-12-04..2022-01-28
+thu_tu_thoi_gian,sz.300015_sz.300347,1.0,1.0,PASS,n=1149
+scaler,sz.300015_sz.300347,0.0,<=1e-12,PASS,val-range check: ok
+dien_thieu,sz.300015_sz.300347,0.0,"0 dates outside A∩B, 0 grep hits",PASS,grep hits: none
+chong_lan_cua_so,sz.300015_sz.300347,0.8690247484972572,-,MEASURE,"corr(rho(t+1),rho(t))=0.9364"
+nhan_khong_chong_lan,sz.300015_sz.300347,-2.609601769634382,-,MEASURE,value = persistence R2 on val; samples with label∩X returns = 0; n=1130
+nhan_khong_chong_lan_ranh_gioi,sz.300015_sz.300347,0.0,0 shared return dates,PASS,train 2016-12-02..2020-01-22 | val 2020-02-03..2020-11-23 | test 2020-11-25..2022-01-28
+ranh_gioi,sz.300015_sh.603799,0.0,0 shared return dates,PASS,train 2016-12-02..2020-03-03 | val 2020-03-05..2020-12-04 | test 2020-12-08..2022-01-28
+thu_tu_thoi_gian,sz.300015_sh.603799,1.0,1.0,PASS,n=1142
+scaler,sz.300015_sh.603799,0.0,<=1e-12,PASS,val-range check: ok
+dien_thieu,sz.300015_sh.603799,0.0,"0 dates outside A∩B, 0 grep hits",PASS,grep hits: none
+chong_lan_cua_so,sz.300015_sh.603799,0.8089818653570078,-,MEASURE,"corr(rho(t+1),rho(t))=0.9050"
+nhan_khong_chong_lan,sz.300015_sh.603799,-2.193688830166568,-,MEASURE,value = persistence R2 on val; samples with label∩X returns = 0; n=1123
+nhan_khong_chong_lan_ranh_gioi,sz.300015_sh.603799,0.0,0 shared return dates,PASS,train 2016-12-02..2020-02-03 | val 2020-02-05..2020-11-24 | test 2020-11-26..2022-01-28
+ranh_gioi,sz.300274_sz.300347,0.0,0 shared return dates,PASS,train 2016-12-07..2020-02-25 | val 2020-02-27..2020-11-30 | test 2020-12-02..2022-01-28
+thu_tu_thoi_gian,sz.300274_sz.300347,1.0,1.0,PASS,n=1162
+scaler,sz.300274_sz.300347,0.0,<=1e-12,PASS,val-range check: ok
+dien_thieu,sz.300274_sz.300347,0.0,"0 dates outside A∩B, 0 grep hits",PASS,grep hits: none
+chong_lan_cua_so,sz.300274_sz.300347,0.876104989748501,-,MEASURE,"corr(rho(t+1),rho(t))=0.9383"
+nhan_khong_chong_lan,sz.300274_sz.300347,-1.744055850971316,-,MEASURE,value = persistence R2 on val; samples with label∩X returns = 0; n=1143
+nhan_khong_chong_lan_ranh_gioi,sz.300274_sz.300347,0.0,0 shared return dates,PASS,train 2016-12-07..2020-01-17 | val 2020-01-21..2020-11-18 | test 2020-11-20..2022-01-28
+ranh_gioi,sz.300274_sh.603799,0.0,0 shared return dates,PASS,train 2016-12-07..2020-02-27 | val 2020-03-02..2020-12-01 | test 2020-12-03..2022-01-28
+thu_tu_thoi_gian,sz.300274_sh.603799,1.0,1.0,PASS,n=1155
+scaler,sz.300274_sh.603799,0.0,<=1e-12,PASS,val-range check: ok
+dien_thieu,sz.300274_sh.603799,0.0,"0 dates outside A∩B, 0 grep hits",PASS,grep hits: none
+chong_lan_cua_so,sz.300274_sh.603799,0.8836611449716651,-,MEASURE,"corr(rho(t+1),rho(t))=0.9420"
+nhan_khong_chong_lan,sz.300274_sh.603799,-2.0226623838381013,-,MEASURE,value = persistence R2 on val; samples with label∩X returns = 0; n=1136
+nhan_khong_chong_lan_ranh_gioi,sz.300274_sh.603799,0.0,0 shared return dates,PASS,train 2016-12-07..2020-01-21 | val 2020-01-23..2020-11-19 | test 2020-11-23..2022-01-28
+ranh_gioi,sz.300347_sh.603799,0.0,0 shared return dates,PASS,train 2016-12-07..2020-03-02 | val 2020-03-04..2020-12-02 | test 2020-12-04..2022-01-28
+thu_tu_thoi_gian,sz.300347_sh.603799,1.0,1.0,PASS,n=1150
+scaler,sz.300347_sh.603799,0.0,<=1e-12,PASS,val-range check: ok
+dien_thieu,sz.300347_sh.603799,0.0,"0 dates outside A∩B, 0 grep hits",PASS,grep hits: none
+chong_lan_cua_so,sz.300347_sh.603799,0.6698877357374871,-,MEASURE,"corr(rho(t+1),rho(t))=0.8555"
+nhan_khong_chong_lan,sz.300347_sh.603799,-2.0283429494462926,-,MEASURE,value = persistence R2 on val; samples with label∩X returns = 0; n=1131
+nhan_khong_chong_lan_ranh_gioi,sz.300347_sh.603799,0.0,0 shared return dates,PASS,train 2016-12-07..2020-01-23 | val 2020-02-04..2020-11-23 | test 2020-11-25..2022-01-28
+ranh_gioi,sz.300014_sz.300122,0.0,0 shared return dates,PASS,train 2016-12-07..2020-02-24 | val 2020-02-26..2020-11-27 | test 2020-12-01..2022-01-28
+thu_tu_thoi_gian,sz.300014_sz.300122,1.0,1.0,PASS,n=1167
+scaler,sz.300014_sz.300122,0.0,<=1e-12,PASS,val-range check: ok
+dien_thieu,sz.300014_sz.300122,0.0,"0 dates outside A∩B, 0 grep hits",PASS,grep hits: none
+chong_lan_cua_so,sz.300014_sz.300122,0.8699006555497835,-,MEASURE,"corr(rho(t+1),rho(t))=0.9350"
+nhan_khong_chong_lan,sz.300014_sz.300122,-1.0001614640237753,-,MEASURE,value = persistence R2 on val; samples with label∩X returns = 0; n=1148
+nhan_khong_chong_lan_ranh_gioi,sz.300014_sz.300122,0.0,0 shared return dates,PASS,train 2016-12-07..2020-01-16 | val 2020-01-20..2020-11-17 | test 2020-11-19..2022-01-28
+ranh_gioi,sz.300014_sz.300207,0.0,0 shared return dates,PASS,train 2016-12-07..2020-02-28 | val 2020-03-03..2020-12-02 | test 2020-12-04..2022-01-28
+thu_tu_thoi_gian,sz.300014_sz.300207,1.0,1.0,PASS,n=1154
+scaler,sz.300014_sz.300207,0.0,<=1e-12,PASS,val-range check: ok
+dien_thieu,sz.300014_sz.300207,0.0,"0 dates outside A∩B, 0 grep hits",PASS,grep hits: none
+chong_lan_cua_so,sz.300014_sz.300207,0.9314806581594322,-,MEASURE,"corr(rho(t+1),rho(t))=0.9678"
+nhan_khong_chong_lan,sz.300014_sz.300207,-1.3566404195837385,-,MEASURE,value = persistence R2 on val; samples with label∩X returns = 0; n=1135
+nhan_khong_chong_lan_ranh_gioi,sz.300014_sz.300207,0.0,0 shared return dates,PASS,train 2016-12-07..2020-01-22 | val 2020-02-03..2020-11-20 | test 2020-11-24..2022-01-28
+ranh_gioi,sz.300014_sz.300450,0.0,0 shared return dates,PASS,train 2016-10-19..2020-03-05 | val 2020-03-09..2020-12-04 | test 2020-12-08..2022-01-28
+thu_tu_thoi_gian,sz.300014_sz.300450,1.0,1.0,PASS,n=1141
+scaler,sz.300014_sz.300450,0.0,<=1e-12,PASS,val-range check: ok
+dien_thieu,sz.300014_sz.300450,0.0,"0 dates outside A∩B, 0 grep hits",PASS,grep hits: none
+chong_lan_cua_so,sz.300014_sz.300450,0.7821707937703477,-,MEASURE,"corr(rho(t+1),rho(t))=0.8910"
+nhan_khong_chong_lan,sz.300014_sz.300450,-1.9345655567404618,-,MEASURE,value = persistence R2 on val; samples with label∩X returns = 0; n=1122
+nhan_khong_chong_lan_ranh_gioi,sz.300014_sz.300450,0.0,0 shared return dates,PASS,train 2016-10-19..2020-02-05 | val 2020-02-07..2020-11-25 | test 2020-11-27..2022-01-28
+ranh_gioi,sz.300122_sz.300207,0.0,0 shared return dates,PASS,train 2016-12-07..2020-02-28 | val 2020-03-03..2020-12-02 | test 2020-12-04..2022-01-28
+thu_tu_thoi_gian,sz.300122_sz.300207,1.0,1.0,PASS,n=1154
+scaler,sz.300122_sz.300207,0.0,<=1e-12,PASS,val-range check: ok
+dien_thieu,sz.300122_sz.300207,0.0,"0 dates outside A∩B, 0 grep hits",PASS,grep hits: none
+chong_lan_cua_so,sz.300122_sz.300207,0.7221395921239679,-,MEASURE,"corr(rho(t+1),rho(t))=0.8697"
+nhan_khong_chong_lan,sz.300122_sz.300207,-2.044939977812332,-,MEASURE,value = persistence R2 on val; samples with label∩X returns = 0; n=1135
+nhan_khong_chong_lan_ranh_gioi,sz.300122_sz.300207,0.0,0 shared return dates,PASS,train 2016-12-07..2020-01-22 | val 2020-02-03..2020-11-20 | test 2020-11-24..2022-01-28
+ranh_gioi,sz.300122_sz.300450,0.0,0 shared return dates,PASS,train 2016-10-19..2020-03-05 | val 2020-03-09..2020-12-04 | test 2020-12-08..2022-01-28
+thu_tu_thoi_gian,sz.300122_sz.300450,1.0,1.0,PASS,n=1141
+scaler,sz.300122_sz.300450,0.0,<=1e-12,PASS,val-range check: ok
+dien_thieu,sz.300122_sz.300450,0.0,"0 dates outside A∩B, 0 grep hits",PASS,grep hits: none
+chong_lan_cua_so,sz.300122_sz.300450,0.8070211232597585,-,MEASURE,"corr(rho(t+1),rho(t))=0.9021"
+nhan_khong_chong_lan,sz.300122_sz.300450,-1.2360031547315975,-,MEASURE,value = persistence R2 on val; samples with label∩X returns = 0; n=1122
+nhan_khong_chong_lan_ranh_gioi,sz.300122_sz.300450,0.0,0 shared return dates,PASS,train 2016-10-19..2020-02-05 | val 2020-02-07..2020-11-25 | test 2020-11-27..2022-01-28
+ranh_gioi,sz.300207_sz.300450,0.0,0 shared return dates,PASS,train 2016-10-19..2020-03-06 | val 2020-03-10..2020-12-07 | test 2020-12-09..2022-01-28
+thu_tu_thoi_gian,sz.300207_sz.300450,1.0,1.0,PASS,n=1136
+scaler,sz.300207_sz.300450,0.0,<=1e-12,PASS,val-range check: ok
+dien_thieu,sz.300207_sz.300450,0.0,"0 dates outside A∩B, 0 grep hits",PASS,grep hits: none
+chong_lan_cua_so,sz.300207_sz.300450,0.8665380911560524,-,MEASURE,"corr(rho(t+1),rho(t))=0.9335"
+nhan_khong_chong_lan,sz.300207_sz.300450,-1.6555777353337677,-,MEASURE,value = persistence R2 on val; samples with label∩X returns = 0; n=1117
+nhan_khong_chong_lan_ranh_gioi,sz.300207_sz.300450,0.0,0 shared return dates,PASS,train 2016-10-19..2020-02-06 | val 2020-02-10..2020-11-25 | test 2020-11-27..2022-01-28
+chon_sieu_tham_so,all,0.0,0,PASS,preds_test (info only): none; tune.py empty (rerun at stage 6)
+xao_tron_nhan,sz.300015_sz.300274,-0.012476294911050845,R2<=0.1 and r2_delta<=0.05,PASS,r2_delta=-3.9801
+dich_nhan,sz.300015_sz.300274,0.9999999102069366,R2>=0.98,PASS,"Ridge, y = rho(t)"
+dich_nhan_clatt,sz.300015_sz.300274,0.9673627179735168,-,MEASURE,"capacity measure, not a leak test"
+xao_tron_nhan,sz.300014_sz.300122,0.0005995034955905698,R2<=0.1 and r2_delta<=0.05,PASS,r2_delta=-6.6832
+dich_nhan,sz.300014_sz.300122,0.9999999611820545,R2>=0.98,PASS,"Ridge, y = rho(t)"
+dich_nhan_clatt,sz.300014_sz.300122,0.9937787194985478,-,MEASURE,"capacity measure, not a leak test"

@@ -23,19 +23,24 @@ def split_bounds(n, gap, fracs=FRACS):
             "test": slice(n_tr + n_va + 2 * gap, n)}
 
 
-def make_dataset(df, T=T, k=K, features=FEATURES):
-    """Sample i: X = rows i..i+T-1 of `features`, y = rho at row i+T. Scaler fit on train rows only."""
-    n = len(df) - T
-    splits = split_bounds(n, gap=k + T)
-    train_rows = df.iloc[: splits["train"].stop + T]  # every row a train input or label touches
+def make_dataset(df, T=T, k=K, features=FEATURES, target="next"):
+    """Sample i: X = rows i..i+T-1 of `features`, y = rho at row i+T-1+h. Scaler fit on train rows only.
+
+    target="next": h=1, y = rho(t+1) (overlaps X by k-1 returns).
+    target="future_window": h=k, y = Pearson over returns t+1..t+k, no return shared with X.
+    """
+    h = {"next": 1, "future_window": k}[target]
+    n = len(df) - T - h + 1
+    splits = split_bounds(n, gap=k + T + h - 1)  # label reaches h-1 rows further, so purge h-1 more
+    train_rows = df.iloc[: splits["train"].stop + T - 1 + h]  # every row a train input or label touches
     scaler = MinMaxScaler().fit(train_rows[features].to_numpy())
     v = scaler.transform(df[features].to_numpy()).astype(np.float32)
     X = sliding_window_view(v, T, axis=0)[:n].transpose(0, 2, 1)  # (n, T, F)
-    y = v[T:, features.index("rho")] if "rho" in features else None
+    y = v[T - 1 + h:, features.index("rho")] if "rho" in features else None
     rho = df.rho.to_numpy()
-    return {"X": X, "y": y, "x_end": df.index[T - 1: T - 1 + n], "y_date": df.index[T:],
-            "y_raw": rho[T:], "rho_prev": rho[T - 1: T - 1 + n],  # original scale, for metrics
-            "splits": splits, "scaler": scaler, "train_rows": train_rows[features]}
+    return {"X": X, "y": y, "x_end": df.index[T - 1: T - 1 + n], "y_date": df.index[T - 1 + h:],
+            "y_raw": rho[T - 1 + h:], "rho_prev": rho[T - 1: T - 1 + n],  # original scale, for metrics
+            "splits": splits, "scaler": scaler, "train_rows": train_rows[features], "h": h}
 
 
 def get_pair_data(pair, T=T, k=K, features=FEATURES):
