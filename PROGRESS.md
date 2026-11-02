@@ -155,6 +155,7 @@ Studies done (val MSE on the original scale, mean over the 2 pairs; trial 0 = Ta
 | CLATT g2 | 16:48-17:33 | 8 / 12 | 0.006317 | 0.005953 (19) | 5.8% | hidden 128, filters 96, dropout 0.10, batch 16, lr 9.5e-4 |
 | CNN-BiLSTM g1 | 17:34-18:08 | 9 / 11 | 0.005723 | 0.004021 (18) | 29.7% | hidden 128, filters 80, dropout 0.17, batch 32, lr 1.8e-3 |
 | CNN-BiLSTM g2 | 18:08-21:30 | 11 / 9 | 0.006550 | 0.005589 (14) | 14.7% | hidden 200, filters 112, dropout 0.29, batch 16, lr 6.8e-4 |
+| CNN-LSTM g1 | 21:30-21:48 | 9 / 11 | 0.004758 | 0.004103 (11) | 13.8% | hidden 32, filters 128, dropout 0.21, batch 16, lr 2.9e-3 |
 
 - After the warmup fix, pruned trials stop at epoch 11 with clearly worse val loss (scaled 0.0026-0.0113 against 0.0020-0.0025 for most complete trials), so pruning no longer looks like noise.
 - Table 1 is already close to the best for CLATT (gains 2.9% and 5.8%). Both best configs use the lowest dropout region (0.10).
