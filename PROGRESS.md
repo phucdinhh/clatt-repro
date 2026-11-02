@@ -153,9 +153,11 @@ Studies done (val MSE on the original scale, mean over the 2 pairs; trial 0 = Ta
 |---|---|---|---|---|---|---|
 | CLATT g1 | 16:07-16:48 | 8 / 12 | 0.004365 | 0.004237 (18) | 2.9% | hidden 256, filters 104, dropout 0.10, batch 32, lr 5.6e-4 |
 | CLATT g2 | 16:48-17:33 | 8 / 12 | 0.006317 | 0.005953 (19) | 5.8% | hidden 128, filters 96, dropout 0.10, batch 16, lr 9.5e-4 |
+| CNN-BiLSTM g1 | 17:34-18:08 | 9 / 11 | 0.005723 | 0.004021 (18) | 29.7% | hidden 128, filters 80, dropout 0.17, batch 32, lr 1.8e-3 |
 
 - After the warmup fix, pruned trials stop at epoch 11 with clearly worse val loss (scaled 0.0026-0.0113 against 0.0020-0.0025 for most complete trials), so pruning no longer looks like noise.
 - Table 1 is already close to the best for CLATT (gains 2.9% and 5.8%). Both best configs use the lowest dropout region (0.10).
+- CNN-BiLSTM g1: Table 1 is 31% worse than CLATT (0.005723 vs 0.004365), but tuned it beats tuned CLATT (0.004021 vs 0.004237). So the Table 1 gap is mostly a tuning gap, the point protocol B is meant to test.
 
 Code: `src/tune.py`, `tests/test_tune.py` (budget, resume, Table 1 trial, report on a tiny budget), `fit(on_epoch=...)` for pruning. Tests: 44 passed; check 5 PASS (tune.py never names the test split).
 

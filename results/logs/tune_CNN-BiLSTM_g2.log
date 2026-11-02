@@ -1,0 +1,7 @@
+[I 2026-11-02 18:08:26,457] A new study created in RDB with name: CNN-BiLSTM_g2
+2026-11-02 18:08:26,533 CNN-BiLSTM group 2: pairs ['sz.300014_sz.300122', 'sz.300014_sz.300450'], 20 trials left
+2026-11-02 18:08:30,280   epoch   1  train 0.06567  val 0.03343  3.07s
+2026-11-02 18:08:33,336   epoch   2  train 0.02271  val 0.05028  3.05s
+2026-11-02 18:08:36,298   epoch   3  train 0.01990  val 0.01416  2.96s
+2026-11-02 18:08:39,599   epoch   4  train 0.01393  val 0.00896  3.30s
+2026-11-02 18:08:42,666   epoch   5  train 0.01316  val 0.00879  3.07s

@@ -64,3 +64,4 @@ loss*=mse (lowest MSE: mse; within 1 std: ['mse', 'mae'])
 2026-11-02 16:07:51 tune CLATT group 1
 2026-11-02 16:48:51 tune CLATT group 2
 2026-11-02 17:34:00 tune CNN-BiLSTM group 1
+2026-11-02 18:08:23 tune CNN-BiLSTM group 2
