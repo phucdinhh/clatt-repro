@@ -2,7 +2,7 @@
 
 Reproduction of the CLATT paper (short-term stock correlation forecasting with CNN-BiLSTM + attention) in PyTorch.
 Source documents are in `docs/`: the experiment plan (PDF, sections 3, 4.1-4.4, 5, 6) and the paper (PDF).
-Current state: stages 0-4 done (stage 4 not committed). Stage 5 step 1 (T) done: T* = 90 (user-confirmed; paper 68 kept as a check). Stage 5 steps 2-3 and stage 6 run **unattended** via `scripts/stage5_6_chain.sh` (started 2026-11-02 07:25; log `results/logs/stage5_6_chain.log`). The user authorised Claude to decide, preferring the paper's values when the selection rule allows. The chain writes T*, L*, loss* into `configs/base.yaml` before tuning. Do not edit `scripts/stage5_6_chain.sh` while it runs (bash reads it incrementally). Update CLAUDE.md and PROGRESS.md after each completed step, then make one git commit for that step on main.
+Current state: stages 0-4 done (stage 4 not committed). Stage 5 step 1 (T) done: T* = 90 (user-confirmed; paper 68 kept as a check). Step 2 done: L* = 2 (same as the paper). Stage 5 step 3 and stage 6 run **unattended** via `scripts/stage5_6_chain.sh` (started 2026-11-02 07:25; log `results/logs/stage5_6_chain.log`). The user authorised Claude to decide, preferring the paper's values when the selection rule allows. The chain writes T*, L*, loss* into `configs/base.yaml` before tuning. Do not edit `scripts/stage5_6_chain.sh` while it runs (bash reads it incrementally). Update CLAUDE.md and PROGRESS.md after each completed step, then make one git commit for that step on main.
 **Do not run `--final` (test split) and do not tune anything based on smoke results** unless asked.
 
 ## Code map

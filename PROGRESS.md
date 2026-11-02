@@ -10,7 +10,7 @@ This file records what each stage produced, how the data and code differ from th
 | 2. Models and baselines | Done | a42ac39 |
 | 3. Training loop and evaluation | Done | d0bf4f4 |
 | 4. Leakage checks | Done (all gates PASS) | not committed |
-| 5. Choose T, layers, loss | In progress (T done; L sweep running) | not committed |
+| 5. Choose T, layers, loss | In progress (T = 90, L = 2 done; loss sweep running) | 135b659 (T), step 2 below |
 | 6. Protocol B tuning (Optuna) | Code ready; queued in the unattended chain | not committed |
 | 7. Main test run (`--final`) | Not started | |
 | 8. Ablations and packaging | Not started | |
@@ -110,7 +110,22 @@ Code: `fixed_split_T` in `make_dataset`, config keys `layers`, `loss`, `fixed_sp
 - CLATT is below persistence at every T (skill -0.13 to -0.25).
 - The other 8 T values (63-67, 69-71) were skipped by the user: all are below 72, which already loses to 90.
 
-### Steps 2-3 and stage 6: unattended chain
+### Step 2: LSTM layers (done 2026-11-02 14:40, L 1, 3, 4 at T=90: 108 new runs; L=2 reused from `sweep_T/T90`)
+
+`results/tables/lstm_layers.csv`. Val, mean ± std over 3 seeds of the 6-pair average, next to the paper's Table 3 R² (test set, so only the ranking is comparable):
+
+| L | R² group 1 | R² group 2 | val MSE g1 / g2 | paper R² g1 / g2 |
+|---|---|---|---|---|
+| 1 | 0.821 ± 0.004 | 0.789 ± 0.009 | 0.00779 / 0.00662 | 0.9467 / 0.8726 |
+| 2 | **0.822 ± 0.004** | **0.794 ± 0.006** | **0.00758 / 0.00646** | **0.9655 / 0.9360** |
+| 3 | 0.818 ± 0.006 | 0.791 ± 0.006 | 0.00796 / 0.00653 | 0.9561 / 0.9228 |
+| 4 | 0.812 ± 0.009 | 0.747 ± 0.067 | 0.00814 / 0.00761 | 0.9397 / 0.8588 |
+
+- L* = 2: lowest val MSE in both groups, the same as the paper. No other L is within 1 std.
+- L = 4 is worst, as in the paper; group 2 is unstable across seeds (R² std 0.067). The order of L = 1 and 3 differs from the paper in group 1, but the gaps are within seed noise.
+- Our R² is far below the paper's at every L (val vs their test; still below persistence, skill -0.13 to -0.37).
+
+### Step 3 and stage 6: unattended chain
 
 On 2026-11-02 the user authorised Claude to decide and continue on its own, preferring the paper's values whenever the selection rule allows (L=2 and MSE win if within 1 std). `scripts/stage5_6_chain.sh` (started 07:25) waits for `sweep_L` (L 1, 3, 4 at T=90, started 07:20), picks L*, runs `sweep_loss` (mae), picks loss*, writes T=90, L*, loss* to `configs/base.yaml`, then runs the 10 stage 6 studies, the tuning report and leakage check 5. Log: `results/logs/stage5_6_chain.log`.
 

@@ -1,2 +1,3 @@
 # Stage 5 proposal (val only). Copy into configs/base.yaml only after the user confirms.
 T: 90
+layers: 2
