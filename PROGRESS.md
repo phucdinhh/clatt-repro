@@ -157,11 +157,13 @@ Studies done (val MSE on the original scale, mean over the 2 pairs; trial 0 = Ta
 | CNN-BiLSTM g2 | 18:08-21:30 | 11 / 9 | 0.006550 | 0.005589 (14) | 14.7% | hidden 200, filters 112, dropout 0.29, batch 16, lr 6.8e-4 |
 | CNN-LSTM g1 | 21:30-21:48 | 9 / 11 | 0.004758 | 0.004103 (11) | 13.8% | hidden 32, filters 128, dropout 0.21, batch 16, lr 2.9e-3 |
 | CNN-LSTM g2 | 21:48-22:23 | 5 / 15 | 0.005920 | 0.005920 (0) | 0% | Table 1 (hidden 114, filters 32, dropout 0.2, batch 32, lr 1e-3) |
+| LSTM g1 | 22:23-22:51 | 9 / 11 | 0.006807 | 0.003789 (4) | 44.3% | hidden 208, dropout 0.45, batch 16, lr 1.8e-3 |
 
 - After the warmup fix, pruned trials stop at epoch 11 with clearly worse val loss (scaled 0.0026-0.0113 against 0.0020-0.0025 for most complete trials), so pruning no longer looks like noise.
 - Table 1 is already close to the best for CLATT (gains 2.9% and 5.8%). Both best configs use the lowest dropout region (0.10).
 - CNN-BiLSTM g1: Table 1 is 31% worse than CLATT (0.005723 vs 0.004365), but tuned it beats tuned CLATT (0.004021 vs 0.004237). So the Table 1 gap is mostly a tuning gap, the point protocol B is meant to test.
 - CNN-BiLSTM g2: tuned it also beats tuned CLATT (0.005589 vs 0.005953), so this holds in both groups (seed 0, 2 pairs each). The study took 3 h 22 min: batch 16 with hidden 200-232 ran 40-47 min per trial, and epochs were up to about 6 s, against 2.7 s in the stage 3 timing.
+- LSTM g1: Table 1 (hidden 32) is the worst config so far, but tuned (hidden 208) it is the best of all models in group 1 (0.003789 vs CLATT 0.004237).
 
 Code: `src/tune.py`, `tests/test_tune.py` (budget, resume, Table 1 trial, report on a tiny budget), `fit(on_epoch=...)` for pruning. Tests: 44 passed; check 5 PASS (tune.py never names the test split).
 
