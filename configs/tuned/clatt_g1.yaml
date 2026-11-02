@@ -1,0 +1,8 @@
+# stage 6 protocol B: best of 20 trials, group 1, val MSE 0.00423749
+name: CLATT
+hidden: 256
+dropout: 0.10424505984263974
+batch_size: 32
+lr: 0.0005558245373993108
+filters: 104
+max_epochs: 80

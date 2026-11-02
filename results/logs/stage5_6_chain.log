@@ -71,3 +71,20 @@ loss*=mse (lowest MSE: mse; within 1 std: ['mse', 'mae'])
 2026-11-02 22:51:38 tune LSTM group 2
 2026-11-02 23:08:10 tune CNN group 1
 2026-11-02 23:10:50 tune CNN group 2
+group 1 val_mse_table1: gap vs CLATT {'CNN': 0.877, 'LSTM': 0.559, 'CNN-LSTM': 0.09, 'CNN-BiLSTM': 0.311, 'CLATT': 0.0}
+group 1 val_mse_best: gap vs CLATT {'CNN': 0.498, 'LSTM': -0.106, 'CNN-LSTM': -0.032, 'CNN-BiLSTM': -0.051, 'CLATT': 0.0}
+group 2 val_mse_table1: gap vs CLATT {'CNN': 0.486, 'LSTM': 0.165, 'CNN-LSTM': -0.063, 'CNN-BiLSTM': 0.037, 'CLATT': 0.0}
+group 2 val_mse_best: gap vs CLATT {'CNN': 0.242, 'LSTM': -0.075, 'CNN-LSTM': -0.005, 'CNN-BiLSTM': -0.061, 'CLATT': 0.0}
+     model  group  val_mse_table1  val_mse_best  improvement_pct  best_trial  hidden  dropout  batch_size      lr  filters  n_params  n_trials  n_pruned
+       CNN      1         0.00819       0.00635         22.51260           9     176  0.20132          16 0.00039     88.0   1395153        20        10
+       CNN      2         0.00939       0.00739         21.24275          18     136  0.24735          16 0.00162     80.0    980273        20         7
+      LSTM      1         0.00681       0.00379         44.32945           4     208  0.44800          16 0.00181      NaN    525201        20        11
+      LSTM      2         0.00736       0.00551         25.16768           1     152  0.38608          16 0.00133      NaN    281657        20        14
+  CNN-LSTM      1         0.00476       0.00410         13.75940          11      32  0.20786          16 0.00294    128.0     30497        20        11
+  CNN-LSTM      2         0.00592       0.00592          0.00000           0     114  0.20000          32 0.00100     32.0    172803        20        15
+CNN-BiLSTM      1         0.00572       0.00402         29.73948          18     128  0.16684          32 0.00180     80.0    611361        20        11
+CNN-BiLSTM      2         0.00655       0.00559         14.67354          14     200  0.29376          16 0.00068    112.0   1467121        20         9
+     CLATT      1         0.00437       0.00424          2.92304          18     256  0.10425          32 0.00056    104.0   2582545        20        12
+     CLATT      2         0.00632       0.00595          5.75829          19     128  0.10239          16 0.00095     96.0    693697        20        12
+{'check': 'chon_sieu_tham_so', 'pair': 'all', 'value': 0, 'threshold': '0', 'status': 'PASS', 'note': 'preds_test (info only): none; tune.py test refs: none'}
+2026-11-02 23:13:58 stage 6 done

@@ -2,7 +2,7 @@
 
 Reproduction of the CLATT paper (short-term stock correlation forecasting with CNN-BiLSTM + attention) in PyTorch.
 Source documents are in `docs/`: the experiment plan (PDF, sections 3, 4.1-4.4, 5, 6) and the paper (PDF).
-Current state: stages 0-4 done (stage 4 not committed). Stage 5 step 1 (T) done: T* = 90 (user-confirmed; paper 68 kept as a check). Step 2: L* = 2, step 3: loss* = MSE (both as the paper); stage 5 done and written to `configs/base.yaml` (T 90, layers 2, mse). Stage 6 runs **unattended** via `scripts/stage6_chain.sh` (restarted 2026-11-02 16:07 after the pruner warmup fix; log `results/logs/stage5_6_chain.log`). The user authorised Claude to decide, preferring the paper's values when the selection rule allows. The chain writes T*, L*, loss* into `configs/base.yaml` before tuning. Do not edit `scripts/stage6_chain.sh` while it runs (bash reads it incrementally). Update CLAUDE.md and PROGRESS.md after each completed step, then make one git commit for that step on main.
+Current state: stages 0-4 done (stage 4 not committed). Stage 5 step 1 (T) done: T* = 90 (user-confirmed; paper 68 kept as a check). Step 2: L* = 2, step 3: loss* = MSE (both as the paper); stage 5 done and written to `configs/base.yaml` (T 90, layers 2, mse). Stage 6 done 2026-11-02 23:14 (`configs/tuned/`, `tuning_summary.csv`; tuned LSTM beats tuned CLATT in both groups on val; check 5 PASS). Next: stage 7. The user authorised Claude to decide, preferring the paper's values when the selection rule allows. Update CLAUDE.md and PROGRESS.md after each completed step, then make one git commit for that step on main.
 **Do not run `--final` (test split) and do not tune anything based on smoke results** unless asked.
 
 ## Code map
@@ -29,7 +29,7 @@ Current state: stages 0-4 done (stage 4 not committed). Stage 5 step 1 (T) done:
 | `src/evaluate.py`, `stats.py` | Empty files, not started |
 | `scripts/leakage_checks.py` | Stage 4: the 9 checks of plan section 7 -> `results/tables/leakage_checks.csv` (check, pair, value, threshold, status, note). Checks 6-7 train CLATT on 2 pairs in memory (val only, nothing under `results/runs/`); check 7 is gated by Ridge, the CLATT run is MEASURE only; the CSV is rewritten after each pair. Check 9 (`nhan_khong_chong_lan`) passes only for the `future_window` label; the main `next` label shares 19 of 20 returns with X by design |
 | `tests/` | `test_leakage.py` (checks 1-5 and 9), `test_pipeline.py` (data, `fixed_split_T` label dates for all 14 T), `test_models.py` (plan 4.4 + baselines), `test_metrics.py` (metrics vs sklearn, hand examples, `--final` guard, `lr=1e-3` override parsing, exact Persistence predictions and skip/config-diff checks via `train_one` into `tmp_path`) |
-| `configs/` | `base.yaml` (T, k, lr, clip_norm, patience, num_threads, layers, loss, fixed_split_T), `models/<model>.yaml` (hidden, filters, dropout, batch_size, max_epochs), `experiments/` |
+| `configs/` | `base.yaml` (T, k, lr, clip_norm, patience, num_threads, layers, loss, fixed_split_T), `models/<model>.yaml` (hidden, filters, dropout, batch_size, max_epochs), `tuned/<model>_g<group>.yaml` (stage 6 best, incl. lr and max_epochs 80; not yet read by `train_one`), `experiments/` |
 
 ## Commands
 

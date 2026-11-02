@@ -1,0 +1,8 @@
+# stage 6 protocol B: best of 20 trials, group 2, val MSE 0.00592035
+name: CNN-LSTM
+hidden: 114
+filters: 32
+dropout: 0.2
+batch_size: 32
+lr: 0.001
+max_epochs: 80

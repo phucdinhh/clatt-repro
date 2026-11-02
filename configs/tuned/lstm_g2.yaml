@@ -1,0 +1,7 @@
+# stage 6 protocol B: best of 20 trials, group 2, val MSE 0.00550726
+name: LSTM
+hidden: 152
+dropout: 0.3860757465489678
+batch_size: 16
+lr: 0.0013274414292574908
+max_epochs: 80

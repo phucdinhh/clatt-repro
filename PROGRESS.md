@@ -11,7 +11,7 @@ This file records what each stage produced, how the data and code differ from th
 | 3. Training loop and evaluation | Done | d0bf4f4 |
 | 4. Leakage checks | Done (all gates PASS) | not committed |
 | 5. Choose T, layers, loss | Done (T = 90, L = 2, MSE; written to base.yaml) | 135b659, ab10d6e, step 3 below |
-| 6. Protocol B tuning (Optuna) | Running (restarted 2026-11-02 16:07 after the pruner fix) | |
+| 6. Protocol B tuning (Optuna) | Done 2026-11-02 23:14 (10 studies, check 5 PASS) | ae6c579 .. this commit |
 | 7. Main test run (`--final`) | Not started | |
 | 8. Ablations and packaging | Not started | |
 
@@ -147,7 +147,7 @@ On 2026-11-02 the user authorised Claude to decide and continue on its own, pref
 
 Started 2026-11-02 15:45 by the chain with T=90, L=2, MSE. Order: CLATT, CNN-BiLSTM, CNN-LSTM, LSTM, CNN, each group 1 then 2. Representative pairs at T=90 (train std of rho): group 1 sz.300015_sz.300347 (max), sz.300347_sh.603799 (min). Logs: `results/logs/tune_<model>_g<group>.log`.
 
-Studies done (val MSE on the original scale, mean over the 2 pairs; trial 0 = Table 1):
+All 10 studies (val MSE on the original scale, mean over the 2 pairs; trial 0 = Table 1):
 
 | Study | Time | Complete / pruned | Table 1 | Best (trial) | Gain | Best hp |
 |---|---|---|---|---|---|---|
@@ -160,6 +160,7 @@ Studies done (val MSE on the original scale, mean over the 2 pairs; trial 0 = Ta
 | LSTM g1 | 22:23-22:51 | 9 / 11 | 0.006807 | 0.003789 (4) | 44.3% | hidden 208, dropout 0.45, batch 16, lr 1.8e-3 |
 | LSTM g2 | 22:51-23:08 | 6 / 14 | 0.007359 | 0.005507 (1) | 25.2% | hidden 152, dropout 0.39, batch 16, lr 1.3e-3 |
 | CNN g1 | 23:08-23:10 | 10 / 10 | 0.008192 | 0.006348 (9) | 22.5% | hidden 176, filters 88, dropout 0.20, batch 16, lr 3.9e-4 |
+| CNN g2 | 23:10-23:13 | 13 / 7 | 0.009389 | 0.007395 (18) | 21.2% | hidden 136, filters 80, dropout 0.25, batch 16, lr 1.6e-3 |
 
 - After the warmup fix, pruned trials stop at epoch 11 with clearly worse val loss (scaled 0.0026-0.0113 against 0.0020-0.0025 for most complete trials), so pruning no longer looks like noise.
 - Table 1 is already close to the best for CLATT (gains 2.9% and 5.8%). Both best configs use the lowest dropout region (0.10).
@@ -175,7 +176,28 @@ How the code differs from the stage 6 spec (decided by Claude under the user's a
 - A study resumed after an interruption does not reproduce the uninterrupted TPE sequence.
 - Pruner warmup (fix on 2026-11-02 16:07): the first CLATT g1 study (15:45-16:06) used MedianPruner with no warmup, and trials 5-19 were all pruned after 1-2 epochs (trial 5 at val 0.0144 against a median of about 0.0143), so only 5 trials trained fully. Epoch-1 val loss says little with patience 10. Fix: val loss is not reported (so no pruning) in each pair's first `patience` = 10 epochs. CLATT g1 and the partly run g2 were deleted from the study DB (backup: `results/optuna/study_noWarmup_backup.db`) and stage 6 restarted with `scripts/stage6_chain.sh`. Every model is tuned with the fixed pruner. Check 5 still PASS, 44 tests unchanged in count (`test_tune` also asserts nothing is reported at epoch 1).
 
+### Stage 6 result
+
+Outputs: `configs/tuned/<model>_g<group>.yaml` (10), `results/tables/tuning_summary.csv` (with n_params), `results/figures/tuning_history.png`. Representative pairs at T=90: g1 sz.300015_sz.300347 / sz.300347_sh.603799, g2 sz.300014_sz.300122 / sz.300014_sz.300450. Leakage check 5 rerun: PASS.
+
+Gap vs CLATT (baseline val MSE / CLATT val MSE - 1; positive means CLATT is better):
+
+| Model | g1 Table 1 | g1 tuned | g2 Table 1 | g2 tuned |
+|---|---|---|---|---|
+| CNN | +0.877 | +0.498 | +0.486 | +0.242 |
+| LSTM | +0.559 | **-0.106** | +0.165 | **-0.075** |
+| CNN-LSTM | +0.090 | -0.032 | -0.063 | -0.005 |
+| CNN-BiLSTM | +0.311 | -0.051 | +0.037 | -0.061 |
+
+- With Table 1 settings CLATT leads every model except CNN-LSTM in g2, matching the paper's ranking. With the same 20-trial budget every recurrent baseline catches up and passes CLATT; plain LSTM is best in both groups. Only CNN stays clearly worse.
+- CLATT gains least from tuning (2.9%, 5.8%): the paper's Table 1 seems tuned for CLATT and not for the baselines (LSTM hidden 32 gains 44% and 25%).
+- Caveats: seed 0, 2 pairs per group, one training per config, so the best value carries selection noise (19 sampled draws against 1 for Table 1). Gaps of a few percent (CNN-LSTM, CNN-BiLSTM g2) are within seed noise seen in stage 5 (val MSE std about 2-3%). Stage 7 (all pairs, several seeds, test) decides.
+- Tuned CLATT g1 has 2.58M parameters (Table 1: 1.13M); tuned CNN-LSTM g1 only 30k.
+
 ## Open decisions (plan section 17)
+
+- Sign-off on stage 6 deviations: pruner warmup (10 epochs per pair), trial 0 = Table 1 run directly, representative pairs by train-only std.
+- Stage 7: run each model with Table 1 and with the tuned config (both protocols), per group.
 
 - Inner join or forward fill when aligning pairs: inner join is implemented, but the choice is not formally signed off.
 - Confirm or reject criteria (plan 6.4): to agree with the advisor before stage 7.

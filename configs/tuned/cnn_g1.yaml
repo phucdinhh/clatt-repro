@@ -1,0 +1,8 @@
+# stage 6 protocol B: best of 20 trials, group 1, val MSE 0.00634813
+name: CNN
+hidden: 176
+dropout: 0.20131664101591284
+batch_size: 16
+lr: 0.00038680884457674013
+filters: 88
+max_epochs: 80

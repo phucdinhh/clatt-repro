@@ -1,0 +1,8 @@
+# stage 6 protocol B: best of 20 trials, group 2, val MSE 0.00558917
+name: CNN-BiLSTM
+hidden: 200
+dropout: 0.29376181916372435
+batch_size: 16
+lr: 0.0006847995378009518
+filters: 112
+max_epochs: 80
