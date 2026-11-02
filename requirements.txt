@@ -7,6 +7,9 @@ scipy>=1.11.0
 # Deep learning framework
 torch>=2.0.0
 
+# Hyperparameter tuning (stage 6)
+optuna>=5.0.0
+
 # Financial data source
 baostock>=0.9.4
 
