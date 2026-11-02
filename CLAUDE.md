@@ -2,7 +2,7 @@
 
 Reproduction of the CLATT paper (short-term stock correlation forecasting with CNN-BiLSTM + attention) in PyTorch.
 Source documents are in `docs/`: the experiment plan (PDF, sections 3, 4.1-4.4, 5, 6) and the paper (PDF).
-Current state: stage 3 is done (commit d0bf4f4; smoke run in `results/runs/smoke/`). Stage 4 (leakage checks) is done, not committed: all gates PASS (see PROGRESS.md and `results/tables/leakage_checks.csv`). Stage 5 (choose T, layers, loss on val) is **in progress**: code done, the reduced T sweep {20, 40, 60, 68, 72, 90} is running (started 2026-11-01 21:27, log `results/logs/stage5_sweep_T.out`). Do not write T*/L*/loss* into `configs/base.yaml` until the user confirms; proposals go to `configs/proposed_stage5.yaml`.
+Current state: stages 0-4 done (stage 4 not committed). Stage 5 step 1 (T) done: T* = 90 (user-confirmed; paper 68 kept as a check). Stage 5 steps 2-3 and stage 6 run **unattended** via `scripts/stage5_6_chain.sh` (started 2026-11-02 07:25; log `results/logs/stage5_6_chain.log`). The user authorised Claude to decide, preferring the paper's values when the selection rule allows. The chain writes T*, L*, loss* into `configs/base.yaml` before tuning. Do not edit `scripts/stage5_6_chain.sh` while it runs (bash reads it incrementally). Update CLAUDE.md and PROGRESS.md after each completed step.
 **Do not run `--final` (test split) and do not tune anything based on smoke results** unless asked.
 
 ## Code map
@@ -23,14 +23,16 @@ Current state: stage 3 is done (commit d0bf4f4; smoke run in `results/runs/smoke
 | `scripts/stage5_report.py` | Writes `timestep.csv`, `lstm_layers.csv`, `loss_compare.csv` (with paper Table 3/4 R²), `timestep_curve.png`, `configs/proposed_stage5.yaml`. Skips sweeps with fewer than 36 runs. Selection: lowest val MSE averaged over both groups; the paper's value (68, 2, mse) wins if within 1 std over seeds |
 | `src/aggregate.py` | `python -m src.aggregate <exp>` writes `results/tables/<exp>_metrics_long.csv` and `<exp>_summary.csv` |
 | `src/plots.py` | `python -m src.plots <exp>` writes `results/figures/<exp>_loss_curves.png` |
-| `src/evaluate.py`, `stats.py`, `tune.py` | Empty files, not started |
+| `src/tune.py` | Stage 6 protocol B: `python -m src.tune --model M --group G` (20 trials, TPE seed 0, MedianPruner per epoch, steps of pair i offset by i*80; SQLite `results/optuna/study.db`, resumable; a stale RUNNING trial is marked FAIL and rerun). Objective: mean original-scale val MSE over 2 representative pairs per group (max and min std of rho on **train rows**), seed 0, max_epochs 80. Trial 0 = Table 1 + lr 1e-3, run directly, not sampled (batch 23 and 62 are not in {16, 32, 64}). `--report` writes `configs/tuned/<model>_g<g>.yaml`, `tuning_summary.csv`, `tuning_history.png` |
+| `scripts/stage5_6_chain.sh` | Unattended: wait for sweep_L -> L* -> sweep_loss -> loss* -> base.yaml -> 10 studies -> tune report + check 5 |
+| `src/evaluate.py`, `stats.py` | Empty files, not started |
 | `scripts/leakage_checks.py` | Stage 4: the 9 checks of plan section 7 -> `results/tables/leakage_checks.csv` (check, pair, value, threshold, status, note). Checks 6-7 train CLATT on 2 pairs in memory (val only, nothing under `results/runs/`); check 7 is gated by Ridge, the CLATT run is MEASURE only; the CSV is rewritten after each pair. Check 9 (`nhan_khong_chong_lan`) passes only for the `future_window` label; the main `next` label shares 19 of 20 returns with X by design |
 | `tests/` | `test_leakage.py` (checks 1-5 and 9), `test_pipeline.py` (data, `fixed_split_T` label dates for all 14 T), `test_models.py` (plan 4.4 + baselines), `test_metrics.py` (metrics vs sklearn, hand examples, `--final` guard, `lr=1e-3` override parsing, exact Persistence predictions and skip/config-diff checks via `train_one` into `tmp_path`) |
 | `configs/` | `base.yaml` (T, k, lr, clip_norm, patience, num_threads, layers, loss, fixed_split_T), `models/<model>.yaml` (hidden, filters, dropout, batch_size, max_epochs), `experiments/` |
 
 ## Commands
 
-- Tests: `python -m pytest -q` (about 90 s, 43 tests; fixtures need the real data in `data/`)
+- Tests: `python -m pytest -q` (about 100 s, 44 tests; fixtures need the real data in `data/`)
 - Leakage checks: `python -m scripts.leakage_checks` (about 10 min, mostly the 4 CLATT trainings)
 - Smoke run: `python -m src.run --exp smoke --models CLATT CNN-BiLSTM Persistence --pairs 300015_300274 --seeds 0`
 - Aggregate and plot: `python -m src.aggregate smoke`, `python -m src.plots smoke`

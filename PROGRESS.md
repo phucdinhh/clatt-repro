@@ -10,8 +10,8 @@ This file records what each stage produced, how the data and code differ from th
 | 2. Models and baselines | Done | a42ac39 |
 | 3. Training loop and evaluation | Done | d0bf4f4 |
 | 4. Leakage checks | Done (all gates PASS) | not committed |
-| 5. Choose T, layers, loss | In progress (T sweep running) | not committed |
-| 6. Protocol B tuning (Optuna) | Not started | |
+| 5. Choose T, layers, loss | In progress (T done; L sweep running) | not committed |
+| 6. Protocol B tuning (Optuna) | Code ready; queued in the unattended chain | not committed |
 | 7. Main test run (`--final`) | Not started | |
 | 8. Ablations and packaging | Not started | |
 
@@ -91,7 +91,37 @@ Code: `fixed_split_T` in `make_dataset`, config keys `layers`, `loss`, `fixed_sp
 - Fair comparison across T: splits are computed once with T_max = 90 and shifted, so train, val and test have the same label dates for every T (2017-05-24..2020-01-15, 2020-07-07..2020-11-18, 2021-05-06..2022-01-28 on 300015_300274). Tested for all 12 pairs and 14 T.
 - Time estimate for the full T grid (14 T x 12 pairs x 3 seeds = 504 runs): about 11 h, over the 6 h limit. So only {20, 40, 60, 68, 72, 90} (216 runs, about 4-8 h) was started on 2026-11-01 21:27. The user decides on the other 8 T after the report.
 - With `loss: mae`, early stopping still uses val MSE so both losses are selected on the same metric (our choice).
-- To do: report T table and figure, propose T*; then `sweep_L` (L 1, 3, 4; L=2 reused) and `sweep_loss` (mae; mse reused); write `configs/proposed_stage5.yaml`; base.yaml only after the user confirms.
+### Step 1: time step T (done 2026-11-02 03:10, 216 runs, no errors)
+
+`results/tables/timestep.csv`, `results/figures/timestep_curve.png`. Val, mean ± std over 3 seeds of the 6-pair average:
+
+| T | R² group 1 | R² group 2 | val MSE (both groups) |
+|---|---|---|---|
+| 20 | 0.805 ± 0.013 | 0.789 ± 0.004 | 0.00767 ± 0.00027 |
+| 40 | 0.810 ± 0.007 | 0.791 ± 0.005 | 0.00748 ± 0.00016 |
+| 60 | 0.813 ± 0.009 | 0.791 ± 0.005 | 0.00734 ± 0.00021 |
+| 68 | 0.814 ± 0.010 | 0.787 ± 0.006 | 0.00730 ± 0.00016 |
+| 72 | 0.820 ± 0.006 | 0.789 ± 0.003 | 0.00717 ± 0.00019 |
+| 90 | 0.822 ± 0.004 | 0.794 ± 0.006 | 0.00702 ± 0.00015 |
+| persistence | 0.841 | 0.810 | |
+
+- T* = 90: lowest val MSE, and 68 is not within 1 std. This differs from the paper (68). The user confirmed 90 as the main setting and kept 68 as a paper check.
+- No clear peak. Group 1 rises steadily with T (+0.017, more than the seed std); group 2 is flat (range 0.007, about one std). 90 is the edge of the grid, so the optimum may lie beyond it.
+- CLATT is below persistence at every T (skill -0.13 to -0.25).
+- The other 8 T values (63-67, 69-71) were skipped by the user: all are below 72, which already loses to 90.
+
+### Steps 2-3 and stage 6: unattended chain
+
+On 2026-11-02 the user authorised Claude to decide and continue on its own, preferring the paper's values whenever the selection rule allows (L=2 and MSE win if within 1 std). `scripts/stage5_6_chain.sh` (started 07:25) waits for `sweep_L` (L 1, 3, 4 at T=90, started 07:20), picks L*, runs `sweep_loss` (mae), picks loss*, writes T=90, L*, loss* to `configs/base.yaml`, then runs the 10 stage 6 studies, the tuning report and leakage check 5. Log: `results/logs/stage5_6_chain.log`.
+
+## Stage 6: protocol B tuning (Optuna)
+
+Code: `src/tune.py`, `tests/test_tune.py` (budget, resume, Table 1 trial, report on a tiny budget), `fit(on_epoch=...)` for pruning. Tests: 44 passed; check 5 PASS (tune.py never names the test split).
+
+How the code differs from the stage 6 spec (decided by Claude under the user's authorisation):
+- Trial 0 is Table 1 run directly, not via `enqueue_trial` with sampled params: Table 1 batch sizes 23 and 62 are not in {16, 32, 64}, and Optuna rejects them. TPE therefore does not learn from trial 0; it still counts as 1 of the 20 trials.
+- Representative pairs use the std of rho over train rows, not the full-series std in `rho_stats.csv` (which includes val and test). With T=68 this changes the group 1 max pair (300015_300347 instead of 300015_300274).
+- A study resumed after an interruption does not reproduce the uninterrupted TPE sequence.
 
 ## Open decisions (plan section 17)
 
@@ -100,7 +130,6 @@ Code: `fixed_split_T` in `make_dataset`, config keys `layers`, `loss`, `fixed_sp
 - PyTorch or Keras: PyTorch is in use.
 - Run protocol B or only protocol A: not decided. This affects the stage 6 time budget.
 - Overfit test criterion (stage 2): keep "95% drop" or require 3,000 steps.
-- Stage 5: run the remaining 8 T values (63-67, 69-71) or not; confirm T*, L*, loss* before writing base.yaml.
 - Run two processes in parallel to roughly halve the runtime: untested.
 
 ## Code to-dos

@@ -66,3 +66,5 @@ results/runs/
 # data/processed/
 docs/
 changes.diff
+# Optuna study database (binary, written during tuning; tuned configs and summary tables are committed)
+results/optuna/

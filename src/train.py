@@ -56,8 +56,9 @@ def predict(model, X):
         return model(torch.tensor(X)).squeeze(1).numpy()
 
 
-def fit(model, X_tr, y_tr, X_va, y_va, cfg, seed):
-    """Adam + MSE on scaled y, grad clipping, early stopping on val MSE; restores the best weights."""
+def fit(model, X_tr, y_tr, X_va, y_va, cfg, seed, on_epoch=None):
+    """Adam + MSE on scaled y, grad clipping, early stopping on val MSE; restores the best weights.
+    `on_epoch(epoch, val_loss)` is called after each epoch (Optuna pruning; it may raise)."""
     loader = DataLoader(TensorDataset(torch.tensor(X_tr), torch.tensor(y_tr)), batch_size=cfg["batch_size"],
                         shuffle=True, generator=torch.Generator().manual_seed(seed))
     opt = torch.optim.Adam(model.parameters(), lr=cfg["lr"])
@@ -78,6 +79,8 @@ def fit(model, X_tr, y_tr, X_va, y_va, cfg, seed):
         history.append({"epoch": epoch, "train_loss": total / len(X_tr), "val_loss": val_loss,
                         "seconds": time.perf_counter() - start})
         log.info("  epoch %3d  train %.5f  val %.5f  %.2fs", epoch, total / len(X_tr), val_loss, history[-1]["seconds"])
+        if on_epoch:
+            on_epoch(epoch, val_loss)
         if val_loss < best:
             best, best_state, best_epoch, wait = val_loss, copy.deepcopy(model.state_dict()), epoch, 0
         else:
