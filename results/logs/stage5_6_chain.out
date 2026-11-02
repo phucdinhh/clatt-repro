@@ -2,3 +2,4 @@
 2026-11-02 14:40:35 L*=2, starting sweep_loss (mae)
 2026-11-02 15:45:29 loss*=mse; writing T=90 layers=2 loss=mse to configs/base.yaml
 2026-11-02 15:45:29 tune CLATT group 1
+2026-11-02 16:06:18 tune CLATT group 2

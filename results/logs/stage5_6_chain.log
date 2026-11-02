@@ -59,3 +59,6 @@ loss  group  r2_mean  r2_std  mse_mean  mse_std  skill_mean  skill_std  r2_delta
 loss*=mse (lowest MSE: mse; within 1 std: ['mse', 'mae'])
 2026-11-02 15:45:29 loss*=mse; writing T=90 layers=2 loss=mse to configs/base.yaml
 2026-11-02 15:45:29 tune CLATT group 1
+2026-11-02 16:06:18 tune CLATT group 2
+2026-11-02 16:07:14 stopped by Claude: MedianPruner pruned 15/20 CLATT g1 trials at epoch 1-2; adding a 10-epoch warmup per pair and restarting stage 6 (scripts/stage6_chain.sh)
+2026-11-02 16:07:51 tune CLATT group 1

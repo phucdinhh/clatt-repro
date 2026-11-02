@@ -11,7 +11,7 @@ This file records what each stage produced, how the data and code differ from th
 | 3. Training loop and evaluation | Done | d0bf4f4 |
 | 4. Leakage checks | Done (all gates PASS) | not committed |
 | 5. Choose T, layers, loss | Done (T = 90, L = 2, MSE; written to base.yaml) | 135b659, ab10d6e, step 3 below |
-| 6. Protocol B tuning (Optuna) | Running (started 2026-11-02 15:45, CLATT g1 first) | |
+| 6. Protocol B tuning (Optuna) | Running (restarted 2026-11-02 16:07 after the pruner fix) | |
 | 7. Main test run (`--final`) | Not started | |
 | 8. Ablations and packaging | Not started | |
 
@@ -153,6 +153,7 @@ How the code differs from the stage 6 spec (decided by Claude under the user's a
 - Trial 0 is Table 1 run directly, not via `enqueue_trial` with sampled params: Table 1 batch sizes 23 and 62 are not in {16, 32, 64}, and Optuna rejects them. TPE therefore does not learn from trial 0; it still counts as 1 of the 20 trials.
 - Representative pairs use the std of rho over train rows, not the full-series std in `rho_stats.csv` (which includes val and test). With T=68 this changes the group 1 max pair (300015_300347 instead of 300015_300274).
 - A study resumed after an interruption does not reproduce the uninterrupted TPE sequence.
+- Pruner warmup (fix on 2026-11-02 16:07): the first CLATT g1 study (15:45-16:06) used MedianPruner with no warmup, and trials 5-19 were all pruned after 1-2 epochs (trial 5 at val 0.0144 against a median of about 0.0143), so only 5 trials trained fully. Epoch-1 val loss says little with patience 10. Fix: val loss is not reported (so no pruning) in each pair's first `patience` = 10 epochs. CLATT g1 and the partly run g2 were deleted from the study DB (backup: `results/optuna/study_noWarmup_backup.db`) and stage 6 restarted with `scripts/stage6_chain.sh`. Every model is tuned with the fixed pruner. Check 5 still PASS, 44 tests unchanged in count (`test_tune` also asserts nothing is reported at epoch 1).
 
 ## Open decisions (plan section 17)
 

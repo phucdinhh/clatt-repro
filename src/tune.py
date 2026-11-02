@@ -72,6 +72,8 @@ def objective(trial, model_name, rep_pairs, cfg):
         data = get_pair_data(pair, cfg["T"], cfg["k"], fixed_split_T=cfg["fixed_split_T"])
 
         def report(epoch, val_loss, offset=i * MAX_EPOCHS):  # pair i uses steps offset+1.., so trials compare like with like
+            if epoch <= cfg["patience"]:  # no pruning in each pair's first epochs: with no warmup, 15/20 CLATT trials died at epoch 1-2
+                return
             trial.report(val_loss, offset + epoch)
             if trial.should_prune():
                 raise optuna.TrialPruned()

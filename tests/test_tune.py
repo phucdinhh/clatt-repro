@@ -28,6 +28,7 @@ def test_tune_budget_resume_and_report(tmp_path, monkeypatch):
     t1 = next(t for t in done if t.user_attrs.get("table1"))
     assert t1.user_attrs["hp"] == {"hidden": 32, "dropout": 0.2, "batch_size": 64, "lr": 0.001}
     assert TABLE1["LSTM"]["hidden"] == 32 and "filters" not in done[-1].user_attrs["hp"]
+    assert all(not t.intermediate_values for t in done)  # epoch 1 <= patience: never reported, so never pruned
 
     tune.report()
     cfg = yaml.safe_load((tmp_path / "tuned" / "lstm_g1.yaml").read_text())
