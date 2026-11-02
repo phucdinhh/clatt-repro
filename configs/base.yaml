@@ -1,10 +1,10 @@
 # Shared settings (plan section 5.1). Model values live in configs/models/<model>.yaml.
-T: 68            # [PAPER] time step
+T: 90  # stage 5 T* on val (paper: 68), user-confirmed 2026-11-02
 k: 20            # rolling Pearson window for the label
 lr: 0.001        # nhóm tự chọn
 clip_norm: 1.0   # nhóm tự chọn
 patience: 10     # early stopping on val MSE (scaled), nhóm tự chọn
 num_threads: 4   # fixed for reproducible CPU runs
-layers: 2        # [PAPER] LSTM layers (Table 3); stage 5 sweeps 1-4
-loss: mse        # [PAPER] training loss, mse or mae (Table 4); early stopping stays on val MSE
+layers: 2  # stage 5 L* on val (paper: 2)
+loss: mse  # stage 5 loss* on val (paper: mse); early stopping stays on val MSE
 fixed_split_T: null  # stage 5: split as if T were this, so val label dates match across T

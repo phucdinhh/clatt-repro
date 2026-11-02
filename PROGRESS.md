@@ -10,8 +10,8 @@ This file records what each stage produced, how the data and code differ from th
 | 2. Models and baselines | Done | a42ac39 |
 | 3. Training loop and evaluation | Done | d0bf4f4 |
 | 4. Leakage checks | Done (all gates PASS) | not committed |
-| 5. Choose T, layers, loss | In progress (T = 90, L = 2 done; loss sweep running) | 135b659 (T), step 2 below |
-| 6. Protocol B tuning (Optuna) | Code ready; queued in the unattended chain | not committed |
+| 5. Choose T, layers, loss | Done (T = 90, L = 2, MSE; written to base.yaml) | 135b659, ab10d6e, step 3 below |
+| 6. Protocol B tuning (Optuna) | Running (started 2026-11-02 15:45, CLATT g1 first) | |
 | 7. Main test run (`--final`) | Not started | |
 | 8. Ablations and packaging | Not started | |
 
@@ -125,11 +125,27 @@ Code: `fixed_split_T` in `make_dataset`, config keys `layers`, `loss`, `fixed_sp
 - L = 4 is worst, as in the paper; group 2 is unstable across seeds (R² std 0.067). The order of L = 1 and 3 differs from the paper in group 1, but the gaps are within seed noise.
 - Our R² is far below the paper's at every L (val vs their test; still below persistence, skill -0.13 to -0.37).
 
-### Step 3 and stage 6: unattended chain
+### Step 3: loss (done 2026-11-02 15:45, mae at T=90, L=2: 36 new runs; mse reused from `sweep_T/T90`)
+
+`results/tables/loss_compare.csv`, next to the paper's Table 4 R²:
+
+| loss | R² group 1 | R² group 2 | val MSE g1 / g2 | paper R² g1 / g2 |
+|---|---|---|---|---|
+| **mse** | **0.822 ± 0.004** | 0.794 ± 0.006 | **0.00758 / 0.00646** | **0.9825 / 0.9661** |
+| mae | 0.822 ± 0.002 | 0.794 ± 0.005 | 0.00775 / 0.00651 | 0.9820 / 0.9644 |
+
+- loss* = MSE: lowest val MSE, and MAE is within 1 std, so the paper's value wins under either reading. As in the paper, the two losses are nearly tied.
+- The chain wrote `T: 90`, `layers: 2`, `loss: mse` into `configs/base.yaml` (comments name the paper values). `fixed_split_T` stays null: with T = 90 the splits are the same as in the sweeps.
+
+**Stage 5 outcome:** T = 90 (paper 68), L = 2 (paper 2), MSE (paper MSE). Only T differs from the paper.
+
+### Stage 6: unattended chain
 
 On 2026-11-02 the user authorised Claude to decide and continue on its own, preferring the paper's values whenever the selection rule allows (L=2 and MSE win if within 1 std). `scripts/stage5_6_chain.sh` (started 07:25) waits for `sweep_L` (L 1, 3, 4 at T=90, started 07:20), picks L*, runs `sweep_loss` (mae), picks loss*, writes T=90, L*, loss* to `configs/base.yaml`, then runs the 10 stage 6 studies, the tuning report and leakage check 5. Log: `results/logs/stage5_6_chain.log`.
 
 ## Stage 6: protocol B tuning (Optuna)
+
+Started 2026-11-02 15:45 by the chain with T=90, L=2, MSE. Order: CLATT, CNN-BiLSTM, CNN-LSTM, LSTM, CNN, each group 1 then 2. Representative pairs at T=90 (train std of rho): group 1 sz.300015_sz.300347 (max), sz.300347_sh.603799 (min). Logs: `results/logs/tune_<model>_g<group>.log`.
 
 Code: `src/tune.py`, `tests/test_tune.py` (budget, resume, Table 1 trial, report on a tiny budget), `fit(on_epoch=...)` for pruning. Tests: 44 passed; check 5 PASS (tune.py never names the test split).
 
