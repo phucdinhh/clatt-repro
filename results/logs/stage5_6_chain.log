@@ -62,3 +62,4 @@ loss*=mse (lowest MSE: mse; within 1 std: ['mse', 'mae'])
 2026-11-02 16:06:18 tune CLATT group 2
 2026-11-02 16:07:14 stopped by Claude: MedianPruner pruned 15/20 CLATT g1 trials at epoch 1-2; adding a 10-epoch warmup per pair and restarting stage 6 (scripts/stage6_chain.sh)
 2026-11-02 16:07:51 tune CLATT group 1
+2026-11-02 16:48:51 tune CLATT group 2

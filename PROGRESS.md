@@ -147,6 +147,15 @@ On 2026-11-02 the user authorised Claude to decide and continue on its own, pref
 
 Started 2026-11-02 15:45 by the chain with T=90, L=2, MSE. Order: CLATT, CNN-BiLSTM, CNN-LSTM, LSTM, CNN, each group 1 then 2. Representative pairs at T=90 (train std of rho): group 1 sz.300015_sz.300347 (max), sz.300347_sh.603799 (min). Logs: `results/logs/tune_<model>_g<group>.log`.
 
+Studies done (val MSE on the original scale, mean over the 2 pairs; trial 0 = Table 1):
+
+| Study | Time | Complete / pruned | Table 1 | Best (trial) | Gain | Best hp |
+|---|---|---|---|---|---|---|
+| CLATT g1 | 16:07-16:48 | 8 / 12 | 0.004365 | 0.004305 (3) | 1.4% | hidden 48, filters 128, dropout 0.13, batch 32, lr 2.2e-3 |
+
+- After the warmup fix, pruned trials stop at epoch 11 with clearly worse val loss (scaled 0.0026-0.0113 against 0.0020-0.0025 for most complete trials), so pruning no longer looks like noise.
+- Table 1 is already near the best for CLATT: no sampled config beats it by more than 1.4%.
+
 Code: `src/tune.py`, `tests/test_tune.py` (budget, resume, Table 1 trial, report on a tiny budget), `fit(on_epoch=...)` for pruning. Tests: 44 passed; check 5 PASS (tune.py never names the test split).
 
 How the code differs from the stage 6 spec (decided by Claude under the user's authorisation):
