@@ -96,7 +96,7 @@ Timing-only runs (3 epochs, CNN/LSTM/CNN-LSTM) are in `results/runs/timing/`.
 
 ## Working notes
 
-- Extension 1 (after stage 7, user request 2026-11-09): `target=delta` config key (`src/dataset.py`, `src/train.py`, `tests/test_extension.py`), exp `ext_delta`, report `python -m scripts.ext_delta_report` -> `results/ext/delta/` (DESIGN.md written before the test read, RESULTS.md). `results/ext/` and `results/logs/ext_*.log` are git-ignored on purpose: the user keeps extension results local, uncommitted. Next planned: extension 2, one model per group.
+- Extension 1 (after stage 7, user request 2026-11-09): `target=delta` config key (`src/dataset.py`, `src/train.py`, `tests/test_extension.py`), exp `ext_delta`, report `python -m scripts.ext_delta_report` -> `results/ext/delta/` (DESIGN.md written before the test read, RESULTS.md). `results/ext/` and `results/logs/ext_*.log` are git-ignored on purpose: the user keeps extension results local, uncommitted. Extension 2 (2026-11-09): `src/group.py` + `src.run --pooled` trains one model per group on the 6 pairs' pooled train samples (own scaler/split per pair, cross-pair date check), writes per-pair outputs in the usual layout; exps `ext_group`, `ext_group_delta`; report `python -m scripts.ext_group_report` -> `results/ext/group/`. Summary of both: `results/ext/SUMMARY.md`.
 
 - `changes.diff` in the repo root is a temporary file. Do not commit it.
 - Leakage check 4 (`dien_thieu`) greps `src/` and `scripts/` for `fillna|bfill|backfill|interpolate`, even in reporting code: use `.where(notna, x)` or `np.nan_to_num` instead.

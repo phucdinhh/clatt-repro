@@ -116,6 +116,16 @@ def write_env(path):
                     f"x{os.cpu_count()}, torch threads {torch.get_num_threads()}\n\n{freeze}")
 
 
+def to_rho(data, sl, out):
+    """Model output on samples `sl` (scaled label) -> forecast of rho(t+1) on the original scale."""
+    out = np.asarray(out).astype(np.float64)
+    if data["target"] == "delta":
+        mu, sd = data["delta_scale"]
+        return data["rho_prev"][sl] + out * sd + mu
+    lo, span = data["scaler"].data_min_[0], data["scaler"].data_range_[0]  # rho is column 0
+    return out * span + lo
+
+
 def train_one(model_name, pair, seed, cfg, split_eval=("val",), exp="smoke", final=False, force=False):
     if "test" in split_eval and not final:
         raise ValueError("evaluating on the test split requires --final")
@@ -159,7 +169,6 @@ def train_one(model_name, pair, seed, cfg, split_eval=("val",), exp="smoke", fin
         run_predict = lambda x: predict(model, x)  # noqa: E731
     info["train_seconds"] = time.perf_counter() - start
 
-    lo, span = data["scaler"].data_min_[0], data["scaler"].data_range_[0]  # rho is column 0
     metrics = {}
     for split in split_eval:
         sl = s[split]
@@ -167,11 +176,8 @@ def train_one(model_name, pair, seed, cfg, split_eval=("val",), exp="smoke", fin
         if model_name == "Persistence":
             # Persistence is exactly rho(t); avoids float32 scale round trip
             y_pred = rho_prev
-        elif data["target"] == "delta":
-            mu, sd = data["delta_scale"]
-            y_pred = rho_prev + run_predict(X[sl]).astype(np.float64) * sd + mu
         else:
-            y_pred = run_predict(X[sl]).astype(np.float64) * span + lo
+            y_pred = to_rho(data, sl, run_predict(X[sl]))
         pd.DataFrame({"date": data["y_date"][sl].date, "y_true": y_true, "y_pred": y_pred,
                       "rho_prev": rho_prev}).to_csv(out / f"preds_{split}.csv", index=False)
         metrics[split] = compute_all(y_true, y_pred, rho_prev)

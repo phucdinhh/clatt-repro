@@ -41,7 +41,11 @@ def main(argv=None):
     p.add_argument("--force", action="store_true", help="rerun even if metrics.json exists")
     p.add_argument("--tuned", action="store_true", help="protocol B: configs/tuned/<model>_g<group>.yaml")
     p.add_argument("--ablation", choices=sorted(ABLATIONS), help="stage 8 switch from configs/ablations.yaml")
+    p.add_argument("--pooled", action="store_true",
+                   help="extension 2: one model per group trained on its 6 pairs together (needs --group)")
     args = p.parse_args(argv)
+    if args.pooled and not args.group:
+        raise SystemExit("--pooled needs --group 1|2|all")
     if args.final and (problems := freeze_problems()):
         raise SystemExit("configs differ from the freeze, refusing --final:\n" + "\n".join(problems))
     overrides = (ABLATIONS[args.ablation]["overrides"] if args.ablation else []) + args.config_override
@@ -57,6 +61,17 @@ def main(argv=None):
     (RESULTS / "logs" / f"{args.exp}.log").parent.mkdir(parents=True, exist_ok=True)  # exp may be nested, e.g. sweep_T/T20
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", handlers=[
         logging.StreamHandler(), logging.FileHandler(RESULTS / "logs" / f"{args.exp}.log")])
+    if args.pooled:
+        from src.group import train_group
+        groups = [1, 2] if args.group == "all" else [int(args.group)]
+        jobs = [(m, g, s) for m in models for g in groups for s in args.seeds]
+        for i, (m, g, s) in enumerate(jobs, 1):
+            log.info("[%d/%d] pooled %s group %d seed%d", i, len(jobs), m, g, s)
+            cfg = load_config(m, overrides, tuned_group=g if args.tuned else None)
+            res = train_group(m, g, s, cfg, exp=args.exp, final=args.final, force=args.force)
+            for pr, r in res.items():
+                log.info("  %s val mse %.5f  skill %.4f", pr, r["val"]["mse"], r["val"]["skill"])
+        return
     jobs = [(m, pr, s) for m in models for pr in chosen for s in args.seeds]
     for i, (m, pr, s) in enumerate(jobs, 1):
         log.info("[%d/%d] %s %s seed%d", i, len(jobs), m, pr, s)

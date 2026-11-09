@@ -57,3 +57,36 @@ def test_delta_train_one_adds_back_rho(tmp_path, monkeypatch):
     # forecast = rho(t) + small change: far closer to rho(t) than the spread of rho itself
     assert np.abs(preds.y_pred - preds.rho_prev).mean() < 0.2 * preds.rho_prev.std() + 0.05
     assert m["val"]["mse"] > 0 and np.isfinite(m["val"]["skill"])
+
+
+# ---- extension 2: one model per group ----
+
+def test_cross_pair_check_passes_and_catches_overlap():
+    from src.group import check_cross_pair, load_group
+    cfg = load_config("CLATT")
+    datas = load_group(1, cfg)  # raises if the real splits overlap across pairs
+    d = next(iter(datas.values()))
+    s = d["splits"]
+    d["splits"] = {**s, "train": slice(s["train"].start, s["val"].start + 5)}  # train runs into val dates
+    with pytest.raises(ValueError, match="pooled train"):
+        check_cross_pair(datas, cfg["T"])
+
+
+def test_train_group_writes_per_pair_and_skips(tmp_path, monkeypatch):
+    import json
+
+    from src.group import group_pairs, train_group
+    monkeypatch.setattr("src.group.RUNS", tmp_path)
+    cfg = load_config("CLATT", ["max_epochs=1"])
+    res = train_group("CLATT", 2, 0, cfg, exp="tmp")
+    assert set(res) == set(group_pairs(2))
+    assert (tmp_path / "tmp" / "CLATT" / "_group2" / "seed0" / "model.pt").exists()
+    n_pooled = 0
+    for pair in group_pairs(2):
+        d = get_pair_data(pair, cfg["T"], cfg["k"])
+        preds = pd.read_csv(tmp_path / "tmp" / "CLATT" / pair / "seed0" / "preds_val.csv")
+        assert list(preds.date) == [str(x.date()) for x in d["y_date"][d["splits"]["val"]]]
+        n_pooled += d["splits"]["train"].stop - d["splits"]["train"].start
+    assert res[group_pairs(2)[0]]["n_train_pooled"] == n_pooled
+    again = train_group("CLATT", 2, 0, cfg, exp="tmp")  # skipped, same metrics
+    assert json.dumps(again, sort_keys=True) == json.dumps(res, sort_keys=True)
