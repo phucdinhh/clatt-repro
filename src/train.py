@@ -17,11 +17,13 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from src.baselines import BASELINES
 from src.data import RESULTS, ROOT
-from src.dataset import get_pair_data
+from src.dataset import FEATURES, get_pair_data
 from src.metrics import compute_all
 from src.models import TABLE1, build, n_params
 
 RUNS = RESULTS / "runs"
+TUNED = ROOT / "configs" / "tuned"
+ABLATION_KEYS = {"features", "head"}  # stage 8 switches; absent from base.yaml so protocol A configs are unchanged
 log = logging.getLogger("clatt")
 
 
@@ -34,11 +36,27 @@ def set_seed(seed):
     torch.use_deterministic_algorithms(True)
 
 
-def load_config(model_name, overrides=()):
-    """configs/base.yaml + configs/models/<model>.yaml + `key=value` overrides (values parsed as YAML)."""
+def tuned_path(model_name, group):
+    return TUNED / f"{model_name.lower().replace('-', '_')}_g{group}.yaml"
+
+
+def load_config(model_name, overrides=(), tuned_group=None):
+    """configs/base.yaml + configs/models/<model>.yaml [+ configs/tuned/<model>_g<group>.yaml if `tuned_group`]
+    + `key=value` overrides (values parsed as YAML).
+
+    Protocol A: tuned_group=None, identical to before stage 7. Protocol B: the stage 6 best (hidden, filters,
+    dropout, batch_size, lr, max_epochs) replaces Table 1, and `tuned_from` records the file. Baselines have
+    no tuned file and are unchanged."""
     base = yaml.safe_load((ROOT / "configs" / "base.yaml").read_text())
-    known = set(base) | {k for p in TABLE1.values() for k in p}
+    known = set(base) | {k for p in TABLE1.values() for k in p} | ABLATION_KEYS
     cfg = {**base, **TABLE1.get(model_name, {})}
+    if tuned_group is not None and model_name in TABLE1:
+        path = tuned_path(model_name, tuned_group)
+        tuned = yaml.safe_load(path.read_text())
+        if tuned.pop("name") != model_name:
+            raise ValueError(f"{path} is not for {model_name}")
+        cfg.update(tuned)
+        cfg["tuned_from"] = str(path.relative_to(ROOT))
     for item in overrides:
         key, value = item.split("=", 1)
         if key not in known:
@@ -101,6 +119,8 @@ def train_one(model_name, pair, seed, cfg, split_eval=("val",), exp="smoke", fin
     if "test" in split_eval and not final:
         raise ValueError("evaluating on the test split requires --final")
     out = RUNS / exp / model_name / pair / f"seed{seed}"
+    if final and force and (out / "preds_test.csv").exists():
+        raise ValueError(f"{out} has already read the test split; --force would read it again (stage 7 rule)")
     new_cfg = {"exp": exp, "model": model_name, "pair": pair, "seed": seed, "split_eval": list(split_eval), **cfg}
     if (out / "metrics.json").exists() and not force:
         cfg_path = out / "config.yaml"
@@ -119,7 +139,8 @@ def train_one(model_name, pair, seed, cfg, split_eval=("val",), exp="smoke", fin
     set_seed(seed)
     torch.set_num_threads(cfg["num_threads"])
 
-    data = get_pair_data(pair, cfg["T"], cfg["k"], fixed_split_T=cfg["fixed_split_T"])
+    data = get_pair_data(pair, cfg["T"], cfg["k"], features=cfg.get("features", FEATURES),
+                         fixed_split_T=cfg["fixed_split_T"])
     X, y, s = data["X"], data["y"], data["splits"]
     start = time.perf_counter()
     if model_name in BASELINES:
@@ -127,7 +148,8 @@ def train_one(model_name, pair, seed, cfg, split_eval=("val",), exp="smoke", fin
         info = {"n_params": model.n_params}
         run_predict = model.predict
     else:
-        model = build(model_name, X.shape[2], cfg["T"], **{k: cfg[k] for k in ("hidden", "filters", "dropout", "layers")})
+        hp = {k: cfg[k] for k in ("hidden", "filters", "dropout", "layers", "head") if k in cfg}
+        model = build(model_name, X.shape[2], cfg["T"], **hp)
         history, best_epoch = fit(model, X[s["train"]], y[s["train"]], X[s["val"]], y[s["val"]], cfg, seed)
         pd.DataFrame(history).to_csv(out / "history.csv", index=False)
         torch.save(model.state_dict(), out / "model.pt")
@@ -149,7 +171,7 @@ def train_one(model_name, pair, seed, cfg, split_eval=("val",), exp="smoke", fin
         pd.DataFrame({"date": data["y_date"][sl].date, "y_true": y_true, "y_pred": y_pred,
                       "rho_prev": rho_prev}).to_csv(out / f"preds_{split}.csv", index=False)
         metrics[split] = compute_all(y_true, y_pred, rho_prev)
-        if model_name == "CLATT":
+        if model_name == "CLATT" and model.attn is not None:  # ablations A2 and A4 have no attention weights
             model.eval()
             with torch.no_grad():
                 np.save(out / f"attention_{split}.npy", model(torch.tensor(X[sl]), return_attention=True)[1].numpy())

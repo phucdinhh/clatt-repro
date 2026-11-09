@@ -2,7 +2,12 @@
 import numpy as np
 import pytest
 
-from scripts.leakage_checks import chon_sieu_tham_so, grep_fill, label_overlap, static_checks
+from scripts.leakage_checks import (
+    chon_sieu_tham_so,
+    grep_fill,
+    label_overlap,
+    static_checks,
+)
 from src.data import CODES
 from src.dataset import T, make_dataset
 from src.features import K, pair_frame, pairs, returns_table

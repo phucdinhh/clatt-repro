@@ -1,7 +1,12 @@
 import numpy as np
 import pandas as pd
 import pytest
-from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, mean_squared_error, r2_score
+from sklearn.metrics import (
+    mean_absolute_error,
+    mean_absolute_percentage_error,
+    mean_squared_error,
+    r2_score,
+)
 
 from src.metrics import compute_all, dir_acc, mae, mape, mse, r2, skill
 from src.train import load_config, train_one
@@ -32,7 +37,14 @@ def test_dir_acc_by_hand():
 
 def test_compute_all_keys():
     assert set(compute_all(Y, P, P * 0)) == {"mse", "rmse", "mae", "r2", "mape", "mape_excl", "smape",
-                                            "n_near_zero", "skill", "r2_delta", "dir_acc"}
+                                            "n_near_zero", "n_mape_dropped", "skill", "r2_delta", "dir_acc"}
+
+
+def test_mape_drops_zero_targets():
+    y, p = np.array([0.0, 0.5, -0.5]), np.array([0.1, 0.6, -0.4])
+    out = compute_all(y, p, y * 0 + 0.2)
+    assert np.isclose(out["mape"], 0.2) and out["n_mape_dropped"] == 1
+    assert all(np.isfinite(v) for v in out.values())
 
 
 def test_test_split_needs_final():

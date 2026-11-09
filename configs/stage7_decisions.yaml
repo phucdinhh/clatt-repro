@@ -1,0 +1,21 @@
+# Stage 7/8 decisions confirmed by the user on 2026-11-08, before the test split was read (guide section 5).
+# Frozen with the other configs (configs/FROZEN.sha256).
+criterion:
+  rule: "CLATT is better than baseline X if mean over the 12 pairs of 1 - MSE_CLATT/MSE_X > 0 AND the
+    Diebold-Mariano test (squared error, h=1, Harvey correction, two-sided p < 0.05, CLATT loss lower) is
+    significant on at least 7 of 12 pairs. Wilcoxon signed-rank over the 12 pairs (p < 0.05) is supporting
+    evidence. Spearman against the paper's Table 5 ranking is reported separately."
+  dm_forecast: "seed-mean forecast of each deep model (primary); per-seed DM shares also reported"
+  compared_to: [Persistence, AR(1), CNN-BiLSTM]
+if_clatt_loses: "report as is; no extra delta-rho variant (A6)"
+seeds:
+  protocol_A: [0, 1, 2, 3, 4]
+  protocol_B: [0, 1, 2]   # 3 seeds, not 5, to fit the time budget; stated in the report
+  baselines: [0]          # deterministic
+ablations: [A1, A2, A3, A4]   # protocol A, seeds 0-4; optional A5-A8 not run
+illustration_pairs: {1: sz.300015_sz.300274, 2: sz.300014_sz.300122}   # true vs predicted figures
+accepted_deviations:
+  - "T = 90 (paper 68), chosen on validation in stage 5"
+  - "Baostock adjusted prices instead of the paper's Haitong data"
+  - "purge of k + T (+ h - 1) samples at each split boundary"
+  - "future_window label for the optional A5 (not run)"

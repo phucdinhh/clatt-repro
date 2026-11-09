@@ -1,0 +1,14 @@
+# Stage 8 ablations of CLATT (plan stage 8.1). Protocol A (Table 1) settings, one switch each, no per-variant
+# tuning. Frozen with the other configs before the test split is read (configs/FROZEN.sha256).
+A1:
+  desc: "no returns: features [rho] only, n_features = 1 (paper Table 6)"
+  overrides: ["features=[rho]"]
+A2:
+  desc: "no attention: CLATT conv + BiLSTM, last state of each direction instead of attention"
+  overrides: ["head=last"]
+A3:
+  desc: "no Conv1D: [rho, r_A, r_B] straight into BiLSTM + attention"
+  overrides: ["filters=null"]
+A4:
+  desc: "mean pooling over time instead of learned attention weights"
+  overrides: ["head=mean"]

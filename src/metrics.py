@@ -20,8 +20,20 @@ def r2(y_true, y_pred):  # Eq. 16
     return float(1 - np.sum((y_true - y_pred) ** 2) / np.sum((y_true - y_true.mean()) ** 2))
 
 
+def mape_terms(y_true, y_pred):
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.abs((y_pred - y_true) / y_true)
+
+
 def mape(y_true, y_pred):  # Eq. 15 as a fraction, like Table 5
-    return float(np.mean(np.abs((y_pred - y_true) / y_true)))
+    """Rows with y_true == 0 give inf/nan terms; they are dropped (counted by n_mape_dropped) so the mean
+    and metrics.json stay finite."""
+    terms = mape_terms(y_true, y_pred)
+    return float(np.mean(terms[np.isfinite(terms)]))
+
+
+def n_mape_dropped(y_true, y_pred):
+    return int(np.sum(~np.isfinite(mape_terms(y_true, y_pred))))
 
 
 def mape_excl(y_true, y_pred):
@@ -56,6 +68,7 @@ def compute_all(y_true, y_pred, rho_prev):
     return {
         "mse": mse(y_true, y_pred), "rmse": rmse(y_true, y_pred), "mae": mae(y_true, y_pred),
         "r2": r2(y_true, y_pred), "mape": mape(y_true, y_pred), "mape_excl": mape_excl(y_true, y_pred),
+        "n_mape_dropped": n_mape_dropped(y_true, y_pred),
         "smape": smape(y_true, y_pred), "n_near_zero": n_near_zero(y_true),
         "skill": skill(y_true, y_pred, rho_prev), "r2_delta": r2_delta(y_true, y_pred, rho_prev),
         "dir_acc": dir_acc(y_true, y_pred, rho_prev),

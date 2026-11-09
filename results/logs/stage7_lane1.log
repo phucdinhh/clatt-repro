@@ -1,0 +1,9 @@
+2026-11-08 16:12:18 lane 1: start src.run --exp main_A --models Persistence MA5 AR(1) Ridge --group all --seeds 0 --final
+2026-11-08 16:12:22 lane 1: done  src.run --exp main_A --models Persistence MA5 AR(1) Ridge --group all --seeds 0 --final
+2026-11-08 16:12:22 lane 1: start src.run --exp main_A --models CLATT CNN-BiLSTM CNN-LSTM LSTM CNN --group all --seeds 0 1 2 3 4 --final
+2026-11-08 18:58:04 lane 1: done  src.run --exp main_A --models CLATT CNN-BiLSTM CNN-LSTM LSTM CNN --group all --seeds 0 1 2 3 4 --final
+2026-11-08 18:58:04 lane 1: start src.run --exp abl_A1 --models CLATT --group all --seeds 0 1 2 3 4 --final --ablation A1
+2026-11-08 19:58:02 lane 1: done  src.run --exp abl_A1 --models CLATT --group all --seeds 0 1 2 3 4 --final --ablation A1
+2026-11-08 19:58:02 lane 1: start src.run --exp abl_A2 --models CLATT --group all --seeds 0 1 2 3 4 --final --ablation A2
+2026-11-08 20:59:49 lane 1: done  src.run --exp abl_A2 --models CLATT --group all --seeds 0 1 2 3 4 --final --ablation A2
+2026-11-08 20:59:49 lane 1: lane finished

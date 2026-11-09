@@ -12,8 +12,8 @@ This file records what each stage produced, how the data and code differ from th
 | 4. Leakage checks | Done (all gates PASS) | not committed |
 | 5. Choose T, layers, loss | Done (T = 90, L = 2, MSE; written to base.yaml) | 135b659, ab10d6e, step 3 below |
 | 6. Protocol B tuning (Optuna) | Done 2026-11-02 23:14 (10 studies, check 5 PASS) | ae6c579 .. this commit |
-| 7. Main test run (`--final`) | Not started | |
-| 8. Ablations and packaging | Not started | |
+| 7. Main test run (`--final`) | Code done, configs frozen 2026-11-08 16:11, runs started 16:12 | not committed (user: hold commits) |
+| 8. Ablations and packaging | Code done (A1-A4 switches, `run_all.sh`), runs queued after main_A | not committed |
 
 ## Stage 0: download script
 
@@ -194,17 +194,93 @@ Gap vs CLATT (baseline val MSE / CLATT val MSE - 1; positive means CLATT is bett
 - Caveats: seed 0, 2 pairs per group, one training per config, so the best value carries selection noise (19 sampled draws against 1 for Table 1). Gaps of a few percent (CNN-LSTM, CNN-BiLSTM g2) are within seed noise seen in stage 5 (val MSE std about 2-3%). Stage 7 (all pairs, several seeds, test) decides.
 - Tuned CLATT g1 has 2.58M parameters (Table 1: 1.13M); tuned CNN-LSTM g1 only 30k.
 
+## Stage 7: main test run
+
+Guide: "Hướng dẫn cho agent hoàn tất giai đoạn 7 và 8" (2026-11-08). The user asked not to commit for now.
+
+### Decisions (asked before the test split was read, stored in `configs/stage7_decisions.yaml`)
+
+| Question (guide section 5) | User's answer |
+|---|---|
+| When is CLATT "better" than X? | Mean over 12 pairs of 1 - MSE_CLATT/MSE_X > 0 **and** DM (squared error, h=1, Harvey, p < 0.05, CLATT lower) on >= 7/12 pairs. Wilcoxon over pairs is supporting evidence; Spearman vs Table 5 reported separately |
+| If CLATT loses to Persistence / AR(1) | Report as is; no Δρ variant (A6) |
+| Seeds for protocol B | 3 (0-2), not 5; protocol A and ablations use 5 (0-4) |
+| Deviations (T = 90, Baostock data, purge k+T, A5 label) | All accepted |
+
+Choices made by Claude before the test read: the primary DM uses the seed-mean forecast of each deep model (per-seed DM shares are reported too); baselines are deterministic, one seed; illustration pairs are sz.300015_sz.300274 (group 1, the smoke pair) and sz.300014_sz.300122 (group 2); Table 5 dataset 1/2 = our group 1/2 [INFERENCE]; Table 5's CNN-BiLSTM dataset-2 MSE 0.0592 is kept as printed (likely a typo for 0.0059), so the Spearman test is also run on MAE.
+
+### 7.0 freeze
+
+`python -m pytest -q` (79 passed, 1 skipped: the freeze test itself) and leakage check 5 (PASS, `preds_test.csv`: none) passed, then `python -m src.freeze write` recorded the sha256 of all 19 files under `configs/` in `configs/FROZEN.sha256` (2026-11-08 16:11). This replaces the "configs frozen before test" commit. `src.run --final` exits if `python -m src.freeze check` is not clean, and `tests/test_stage7.py::test_repo_configs_match_freeze` fails if a config changes.
+The first freeze attempt stopped on leakage check 4: the new reporting code used `fillna` (to fill a count column), which the check greps for. It was rewritten without `fillna`; no data is filled anywhere.
+
+### 7.1 code changes before the test read
+
+- `load_config(..., tuned_group=g)` and `src.run --tuned` (group taken from the pair) merge `configs/tuned/<model>_g<g>.yaml` (hidden, filters, dropout, batch_size, lr, max_epochs 80) and record `tuned_from`. Without `--tuned` the config dict is unchanged; a rerun of the demo CLATT run with the new code gave a byte-identical `metrics.json` and `preds_val.csv`.
+- Stage 8 switches (also written before the test read so they are frozen too): `head` in `ConvRNN` (attention / last / mean), `features` passed from the config to `get_pair_data`, `--ablation A1..A4` from `configs/ablations.yaml`.
+- Guards: `train_one(final=True, force=True)` raises once `preds_test.csv` exists (the test split is read once per config); `mape` drops inf/nan terms and counts them (`n_mape_dropped`).
+- Tests: `tests/test_stage7.py` (tuned config = YAML, off = Table 1, CLI group lookup, deep `train_one` reproducibility, `--final --force` guard, freeze, ablation switches), `tests/test_stats.py` (DM on synthetic errors, Harvey factor by hand, verdict, evaluate tables with inf dropping and missing runs, Spearman, figures). 80 tests.
+
+### 7.2-7.3 runs
+
+Three lanes in three terminals (`scripts/stage7_lane.sh 1|2|3`, each process at num_threads 4; parallel runs were checked to be byte-identical to sequential ones): lane 1 = main_A (4 baselines seed 0 + 5 deep models x 12 pairs x 5 seeds = 300 runs) then abl_A1, abl_A2; lane 2 = main_B group 1 (5 x 6 x 3 = 90) then, after main_A, abl_A3, abl_A4; lane 3 = main_B group 2 (90). Ablations are frozen with the main configs, so starting them before main_B ends does not let test numbers shape them. Logs: `results/logs/stage7_lane<N>.log`, `main_A.log`, `main_B.log`, `abl_A<k>.log`.
+
+Runs finished 2026-11-08 21:16 (wall time 5 h 04 min for 3 lanes; main_B 1 h 26 min per group, main_A deep models 2 h 46 min, each ablation 50-70 min). Counts: main_A 348 (300 deep + 48 baseline), main_B 180, abl_A1-A4 60 each; no errors, no missing runs. Report: `bash scripts/stage7_8_report.sh` (log `results/logs/stage7_8_report.log`); freeze check clean afterwards, check 5 PASS.
+
+### 7.4 test results (12 pairs; mean ± std over seeds of the pair mean; `results/tables/main_compare.csv`)
+
+| Model | A: MSE | A: R² | B: MSE | B: R² |
+|---|---|---|---|---|
+| CLATT | 0.0082 ± 0.0010 | 0.834 | 0.0068 ± 0.0001 | 0.855 |
+| CNN-BiLSTM | 0.0105 ± 0.0003 | 0.778 | 0.0071 ± 0.0004 | 0.849 |
+| CNN-LSTM | 0.0082 ± 0.0005 | 0.828 | 0.0070 ± 0.0002 | 0.852 |
+| LSTM | 0.0155 ± 0.0027 | 0.637 | **0.0057 ± 0.0000** | 0.877 |
+| CNN | 0.0163 ± 0.0007 | 0.652 | 0.0146 ± 0.0007 | 0.686 |
+| Persistence | **0.0048** | 0.894 | (same) | |
+| AR(1) | **0.0047** | 0.896 | (same) | |
+| Ridge / MA5 | 0.0083 / 0.0103 | 0.814 / 0.773 | (same) | |
+
+A = paper Table 1 settings, 5 seeds; B = stage 6 tuned, 3 seeds; baselines are deterministic (1 run).
+
+### 7.5 tests (pre-registered criterion: mean rel. skill > 0 and DM p < 0.05 in CLATT's favour on >= 7/12 pairs; `<exp>_tests.csv`, `<exp>_dm_by_pair.csv`)
+
+| CLATT vs | Protocol | Mean skill 1 - MSE_CLATT/MSE_X | DM sig. CLATT better / X better | Wilcoxon p | CLATT better? |
+|---|---|---|---|---|---|
+| Persistence | A | -69.9% | 0 / 11 | 0.0005 | **No** |
+| AR(1) | A | -71.2% | 0 / 11 | 0.0005 | **No** |
+| CNN-BiLSTM | A | +22.4% | 10 / 0 | 0.021 | **Yes** |
+| Persistence | B | -43.0% | 0 / 8 | 0.0005 | **No** |
+| AR(1) | B | -44.3% | 0 / 10 | 0.0005 | **No** |
+| CNN-BiLSTM | B | +3.8% | 4 / 1 | 0.077 | **No** |
+
+Spearman of our model ranking vs paper Table 5 (5 deep models; `<exp>_spearman_table5.csv`): protocol A group 1 rho = 0.90 (p = 0.037) on MSE and MAE, group 2 rho = 0.10 (MSE; CNN-LSTM first) and 0.70 (MAE); protocol B rho between -0.2 and 0.6, none significant (tuned LSTM ranks first in both groups).
+
+### Conclusion (stage 7)
+
+1. **The paper's main claim does not hold against simple baselines.** On the test split CLATT's MSE is 70% higher than persistence (ρ̂(t+1) = ρ(t)) with Table 1 settings and 43% higher after tuning; persistence is significantly better on 11/12 and 8/12 pairs. No deep model beats persistence or AR(1) on average: the 20-day rolling correlation is close to a random walk one day ahead, and the models mostly learn to copy ρ(t) with extra noise (`results/figures/main_A_pred_vs_true.png`).
+2. **The ranking among deep models depends on the protocol.** With the paper's hyperparameters we reproduce the paper's order in group 1 (Spearman 0.90) and CLATT beats CNN-BiLSTM by 22% (the paper reports 28-57% over the other deep models); it ties CNN-LSTM (0.0082 vs 0.0082). With an equal tuning budget the advantage disappears: CLATT vs CNN-BiLSTM is +3.8% and not significant, and plain LSTM is best (MSE 0.0057, 16% below CLATT). This matches the stage 6 validation result.
+3. Caveats: one 8-stock market and period (test from 2021-04-29/05-12 to 2022-01-28, 179-185 days per pair), T = 90 instead of 68, Baostock data; protocol B uses 3 seeds and 20 Optuna trials per model and group.
+
+## Stage 8: ablations A1-A4 (CLATT, protocol A, 5 seeds, test; `results/tables/ablation.csv`, `results/figures/ablation.png`)
+
+| Variant | MSE (full CLATT 0.0082) | Change | DM sig. full better / variant better | Wilcoxon p | Reading |
+|---|---|---|---|---|---|
+| A1 no returns (input ρ only) | 0.0068 | -16.8% | 0 / 8 | 0.0005 | Returns hurt; dropping them helps |
+| A2 no attention (last BiLSTM state) | 0.0079 | -3.7% | 4 / 1 | 0.85 | No difference; attention adds nothing |
+| A3 no Conv1D | 0.0060 | -26.9% | 0 / 10 | 0.001 | Conv1D hurts; dropping it helps |
+| A4 mean pooling instead of attention | 0.0465 | +466% | 12 / 0 | 0.0005 | Much worse (val MSE 0.0285 vs 0.0072 too, so not a test artefact): averaging 90 steps blurs the last value, which carries most of the signal |
+
+Conclusion (stage 8): none of the parts CLATT adds to a BiLSTM improves the forecast on our data. Attention behaves like taking the last state (A2 ≈ full, A4 far worse), so the attention head mostly learns to look at the end of the window. Removing the Conv1D layer or the return inputs gives lower test error, which is consistent with the tuned plain LSTM being the best deep model. A5-A8 (guide's optional list) were not run.
+
 ## Open decisions (plan section 17)
 
 - Sign-off on stage 6 deviations: pruner warmup (10 epochs per pair), trial 0 = Table 1 run directly, representative pairs by train-only std.
-- Stage 7: run each model with Table 1 and with the tuned config (both protocols), per group.
 
 - Inner join or forward fill when aligning pairs: inner join is implemented, but the choice is not formally signed off.
 - Confirm or reject criteria (plan 6.4): to agree with the advisor before stage 7.
 - PyTorch or Keras: PyTorch is in use.
-- Run protocol B or only protocol A: not decided. This affects the stage 6 time budget.
 - Overfit test criterion (stage 2): keep "95% drop" or require 3,000 steps.
-- Run two processes in parallel to roughly halve the runtime: untested.
+- Parallel runs: done in stage 7 (3 processes, results byte-identical to sequential runs).
 
 ## Code to-dos
 

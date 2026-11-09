@@ -16,29 +16,41 @@ class Attention(nn.Module):
 
 
 class ConvRNN(nn.Module):
-    """[Conv1D -> ReLU -> Dropout] -> (Bi)LSTM x layers -> Dropout -> last state or attention -> Dense(1).
+    """[Conv1D -> ReLU -> Dropout] -> (Bi)LSTM x layers -> Dropout -> head -> Dense(1).
 
     Covers LSTM (filters=None), CNN-LSTM, CNN-BiLSTM and CLATT (bidirectional + attention).
+    head: "attention" (Eq. 8-9), "last" (final state of each direction) or "mean" (uniform mean over time).
+    `attention=True` is the old spelling of head="attention". Ablations: A2 = CLATT with head="last",
+    A3 = CLATT with filters=None, A4 = CLATT with head="mean".
     """
 
+    HEADS = ("attention", "last", "mean")
+
     def __init__(self, n_features, hidden, filters, dropout, bidirectional=False, attention=False,
-                 layers=2, kernel=3):
+                 layers=2, kernel=3, head=None):
         super().__init__()
         self.conv = nn.Sequential(nn.Conv1d(n_features, filters, kernel, padding="same"), nn.ReLU(),
                                   nn.Dropout(dropout)) if filters else None
         self.rnn = nn.LSTM(filters or n_features, hidden, layers, batch_first=True, bidirectional=bidirectional)
         self.dirs = 2 if bidirectional else 1
         self.drop = nn.Dropout(dropout)
-        self.attn = Attention(hidden * self.dirs) if attention else None
+        self.head = head or ("attention" if attention else "last")
+        if self.head not in self.HEADS:
+            raise ValueError(f"unknown head {self.head!r}; choose from {self.HEADS}")
+        self.attn = Attention(hidden * self.dirs) if self.head == "attention" else None
         self.out = nn.Linear(hidden * self.dirs, 1)
 
     def forward(self, x, return_attention=False):  # x: (B, T, F)
         if self.conv is not None:
             x = self.conv(x.transpose(1, 2)).transpose(1, 2)
         seq, (hn, _) = self.rnn(x)
-        if self.attn is None:
+        a = None
+        if self.head == "last":
             # Keras return_sequences=False: final state of each direction (the backward one ends at t=0)
-            return self.out(self.drop(torch.cat(list(hn[-self.dirs:]), dim=-1)))
-        c, a = self.attn(self.drop(seq))
-        y = self.out(c)
+            y = self.out(self.drop(torch.cat(list(hn[-self.dirs:]), dim=-1)))
+        elif self.head == "mean":
+            y = self.out(self.drop(seq).mean(1))
+        else:
+            c, a = self.attn(self.drop(seq))
+            y = self.out(c)
         return (y, a) if return_attention else y
