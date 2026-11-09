@@ -96,6 +96,8 @@ Timing-only runs (3 epochs, CNN/LSTM/CNN-LSTM) are in `results/runs/timing/`.
 
 ## Working notes
 
+- Extension 1 (after stage 7, user request 2026-11-09): `target=delta` config key (`src/dataset.py`, `src/train.py`, `tests/test_extension.py`), exp `ext_delta`, report `python -m scripts.ext_delta_report` -> `results/ext/delta/` (DESIGN.md written before the test read, RESULTS.md). `results/ext/` and `results/logs/ext_*.log` are git-ignored on purpose: the user keeps extension results local, uncommitted. Next planned: extension 2, one model per group.
+
 - `changes.diff` in the repo root is a temporary file. Do not commit it.
 - Leakage check 4 (`dien_thieu`) greps `src/` and `scripts/` for `fillna|bfill|backfill|interpolate`, even in reporting code: use `.where(notna, x)` or `np.nan_to_num` instead.
 - Parallel processes (num_threads 4 each) give byte-identical runs: the demo CLATT run repeated while pytest ran gave the same `metrics.json` and `preds_val.csv` (2026-11-08).

@@ -24,6 +24,7 @@ from src.models import TABLE1, build, n_params
 RUNS = RESULTS / "runs"
 TUNED = ROOT / "configs" / "tuned"
 ABLATION_KEYS = {"features", "head"}  # stage 8 switches; absent from base.yaml so protocol A configs are unchanged
+EXTENSION_KEYS = {"target"}  # after stage 7: target=delta (forecast rho(t+1) - rho(t)); absent = "next"
 log = logging.getLogger("clatt")
 
 
@@ -48,7 +49,7 @@ def load_config(model_name, overrides=(), tuned_group=None):
     dropout, batch_size, lr, max_epochs) replaces Table 1, and `tuned_from` records the file. Baselines have
     no tuned file and are unchanged."""
     base = yaml.safe_load((ROOT / "configs" / "base.yaml").read_text())
-    known = set(base) | {k for p in TABLE1.values() for k in p} | ABLATION_KEYS
+    known = set(base) | {k for p in TABLE1.values() for k in p} | ABLATION_KEYS | EXTENSION_KEYS
     cfg = {**base, **TABLE1.get(model_name, {})}
     if tuned_group is not None and model_name in TABLE1:
         path = tuned_path(model_name, tuned_group)
@@ -140,7 +141,7 @@ def train_one(model_name, pair, seed, cfg, split_eval=("val",), exp="smoke", fin
     torch.set_num_threads(cfg["num_threads"])
 
     data = get_pair_data(pair, cfg["T"], cfg["k"], features=cfg.get("features", FEATURES),
-                         fixed_split_T=cfg["fixed_split_T"])
+                         fixed_split_T=cfg["fixed_split_T"], target=cfg.get("target", "next"))
     X, y, s = data["X"], data["y"], data["splits"]
     start = time.perf_counter()
     if model_name in BASELINES:
@@ -166,6 +167,9 @@ def train_one(model_name, pair, seed, cfg, split_eval=("val",), exp="smoke", fin
         if model_name == "Persistence":
             # Persistence is exactly rho(t); avoids float32 scale round trip
             y_pred = rho_prev
+        elif data["target"] == "delta":
+            mu, sd = data["delta_scale"]
+            y_pred = rho_prev + run_predict(X[sl]).astype(np.float64) * sd + mu
         else:
             y_pred = run_predict(X[sl]).astype(np.float64) * span + lo
         pd.DataFrame({"date": data["y_date"][sl].date, "y_true": y_true, "y_pred": y_pred,

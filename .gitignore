@@ -68,3 +68,7 @@ docs/
 changes.diff
 # Optuna study database (binary, written during tuning; tuned configs and summary tables are committed)
 results/optuna/
+
+# Extensions after stage 7 (Δρ, group model): kept locally for the report, not committed
+results/ext/
+results/logs/ext_*.log

@@ -28,9 +28,12 @@ def make_dataset(df, T=T, k=K, features=FEATURES, target="next", fixed_split_T=N
 
     target="next": h=1, y = rho(t+1) (overlaps X by k-1 returns).
     target="future_window": h=k, y = Pearson over returns t+1..t+k, no return shared with X.
+    target="delta" (extension, after stage 7): h=1, y = rho(t+1) - rho(t), standardized with the mean/std of the
+        train labels only; the forecast is rho(t) + the unscaled output, so a zero output is Persistence.
+        X, splits and label dates are identical to "next".
     fixed_split_T: split as if T were this (>= T), so every split keeps the same label dates for any T.
     """
-    h = {"next": 1, "future_window": k}[target]
+    h = {"next": 1, "future_window": k, "delta": 1}[target]
     n = len(df) - T - h + 1
     Ts = fixed_split_T or T
     if Ts < T:
@@ -45,15 +48,22 @@ def make_dataset(df, T=T, k=K, features=FEATURES, target="next", fixed_split_T=N
     X = sliding_window_view(v, T, axis=0)[:n].transpose(0, 2, 1)  # (n, T, F)
     y = v[T - 1 + h:, features.index("rho")] if "rho" in features else None
     rho = df.rho.to_numpy()
-    return {"X": X, "y": y, "x_end": df.index[T - 1: T - 1 + n], "y_date": df.index[T - 1 + h:],
-            "y_raw": rho[T - 1 + h:], "rho_prev": rho[T - 1: T - 1 + n],  # original scale, for metrics
-            "splits": splits, "scaler": scaler, "train_rows": train_rows[features], "h": h}
+    out = {"X": X, "y": y, "x_end": df.index[T - 1: T - 1 + n], "y_date": df.index[T - 1 + h:],
+           "y_raw": rho[T - 1 + h:], "rho_prev": rho[T - 1: T - 1 + n],  # original scale, for metrics
+           "splits": splits, "scaler": scaler, "train_rows": train_rows[features], "h": h, "target": target}
+    if target == "delta":
+        d = out["y_raw"] - out["rho_prev"]
+        mu, sd = float(d[s_tr].mean()), float(d[s_tr].std())  # train labels only
+        out["y"] = ((d - mu) / sd).astype(np.float32)
+        out["delta_scale"] = (mu, sd)
+    return out
 
 
-def get_pair_data(pair, T=T, k=K, features=FEATURES, fixed_split_T=None):
+def get_pair_data(pair, T=T, k=K, features=FEATURES, fixed_split_T=None, target="next"):
     """`pair` is 'sz.300015_sz.300274'; rebuilt from raw CSVs so k and T can vary."""
     a, b = pair.split("_")
-    return make_dataset(pair_frame(returns_table([a, b]), a, b, k), T, k, features, fixed_split_T=fixed_split_T)
+    return make_dataset(pair_frame(returns_table([a, b]), a, b, k), T, k, features, target=target,
+                        fixed_split_T=fixed_split_T)
 
 
 def halt_runs(halted, market_days):
