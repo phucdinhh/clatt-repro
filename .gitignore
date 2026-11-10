@@ -72,3 +72,4 @@ results/optuna/
 # Extensions after stage 7 (Δρ, group model): kept locally for the report, not committed
 results/ext/
 results/logs/ext_*.log
+data/raw/index/

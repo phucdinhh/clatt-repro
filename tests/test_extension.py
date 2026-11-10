@@ -90,3 +90,48 @@ def test_train_group_writes_per_pair_and_skips(tmp_path, monkeypatch):
     assert res[group_pairs(2)[0]]["n_train_pooled"] == n_pooled
     again = train_group("CLATT", 2, 0, cfg, exp="tmp")  # skipped, same metrics
     assert json.dumps(again, sort_keys=True) == json.dumps(res, sort_keys=True)
+
+
+# ---- extension 3: market features (B) and the departing-day feature ----
+
+def test_leave_feature_uses_past_only_and_matches_definition():
+    from src.features import K, add_leave, pair_frame, returns_table
+    a, b = PAIR.split("_")
+    df = pair_frame(returns_table([a, b]), a, b, start=None)
+    x = add_leave(df).x_leave
+    t = 200
+    w = df.iloc[t - K + 1: t + 1]
+    za = (w.r_A.iloc[0] - w.r_A.mean()) / w.r_A.std()
+    zb = (w.r_B.iloc[0] - w.r_B.mean()) / w.r_B.std()
+    assert np.isclose(x.iloc[t], za * zb)
+    future = df.copy()
+    future.iloc[t + 1:, :] = future.iloc[t + 1:, :] * 3 + 0.01  # change everything after day t
+    assert np.allclose(add_leave(future).x_leave.iloc[: t + 1], x.iloc[: t + 1], equal_nan=True)
+
+
+def test_market_features_use_past_only(monkeypatch):
+    from src import features
+    base = features.market_table()
+    cut = base.index[400]
+    real = pd.read_csv
+
+    def shocked(path, *args, **kw):
+        out = real(path, *args, **kw)
+        if "index" in str(path):
+            out.loc[pd.to_datetime(out.date) > cut, "close"] *= 1.5
+        return out
+    monkeypatch.setattr(features.pd, "read_csv", shocked)
+    after = features.market_table()
+    assert np.allclose(after.loc[:cut], base.loc[:cut], equal_nan=True)
+    assert not np.allclose(after.loc[cut:].iloc[1:5], base.loc[cut:].iloc[1:5], equal_nan=True)
+
+
+@pytest.mark.parametrize("extra", [["x_leave"], "market", ["x_leave", "market"]])
+def test_extension_features_keep_dates_splits_labels(extra):
+    from src.features import MARKET_FEATURES
+    extra = MARKET_FEATURES if extra == "market" else [f for x in extra for f in (MARKET_FEATURES if x == "market" else [x])]
+    base = get_pair_data(PAIR, 90, 20, target="delta")
+    d = get_pair_data(PAIR, 90, 20, features=["rho", "r_A", "r_B"] + extra, target="delta")
+    assert d["y_date"].equals(base["y_date"]) and d["splits"] == base["splits"]
+    assert np.array_equal(d["y"], base["y"]) and not np.isnan(d["X"]).any()
+    assert np.allclose(d["X"][:, :, :3], base["X"])

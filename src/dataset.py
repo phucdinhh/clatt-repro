@@ -8,7 +8,7 @@ from numpy.lib.stride_tricks import sliding_window_view
 from sklearn.preprocessing import MinMaxScaler
 
 from src.data import CODES, END, PAPER_DAYS, PROCESSED, RESULTS, START, load_raw, traded
-from src.features import K, pair_frame, pairs, returns_table, rho_stats
+from src.features import LEAVE_FEATURE, MARKET_FEATURES, K, add_leave, add_market, pair_frame, pairs, returns_table, rho_stats
 
 T = 68
 FEATURES = ["rho", "r_A", "r_B"]
@@ -62,8 +62,18 @@ def make_dataset(df, T=T, k=K, features=FEATURES, target="next", fixed_split_T=N
 def get_pair_data(pair, T=T, k=K, features=FEATURES, fixed_split_T=None, target="next"):
     """`pair` is 'sz.300015_sz.300274'; rebuilt from raw CSVs so k and T can vary."""
     a, b = pair.split("_")
-    return make_dataset(pair_frame(returns_table([a, b]), a, b, k), T, k, features, target=target,
-                        fixed_split_T=fixed_split_T)
+    if LEAVE_FEATURE in features or any(f in MARKET_FEATURES for f in features):
+        df = pair_frame(returns_table([a, b]), a, b, k, start=None)  # extension features need the warm-up rows
+        if LEAVE_FEATURE in features:
+            df = add_leave(df, k)
+        if any(f in MARKET_FEATURES for f in features):
+            df = add_market(df, k)
+        df = df.loc[START:]
+        if df[features].isna().any().any():
+            raise ValueError(f"{pair}: extension features missing after {START}")
+    else:
+        df = pair_frame(returns_table([a, b]), a, b, k)
+    return make_dataset(df, T, k, features, target=target, fixed_split_T=fixed_split_T)
 
 
 def halt_runs(halted, market_days):
